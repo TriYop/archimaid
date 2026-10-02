@@ -59,7 +59,7 @@ def test_add_retargets_to_the_table_named_in_the_query(client):
     assert response.headers["HX-Retarget"] == "#add-errors-people"
 
 
-def test_html_in_values_is_escaped_in_rows_inputs_and_confirm(client, services):
+def test_html_in_values_is_escaped_in_rows_and_inputs(client, services):
     # Review Focus test (1)
     nasty = '<script>alert(1)</script> "q"'
     team = make_team(services, name=nasty)
@@ -143,6 +143,8 @@ def test_missing_record_is_a_404_flash_for_every_row_action(client, hx):
         response = getattr(client, method)(url, headers=hx)
         assert response.status_code == 404, (method, url)
         assert response.headers["HX-Retarget"] == "#flash"
+        assert response.headers["HX-Reswap"] == "innerHTML"
+        assert "not found" in response.text
 
 
 def test_the_same_error_without_htmx_is_a_full_error_page(client):
@@ -160,3 +162,17 @@ def test_persona_add_edit_save_delete(client, services):
     assert saved.status_code == 200
     assert services.personas.get(persona.id).category is None
     assert client.delete(f"/ui/personas/{persona.id}").status_code == 200
+
+
+def test_add_form_resets_only_on_non_error_status(client):
+    html = client.get("/ui/teams").text
+    assert "event.detail.xhr.status < 400" in html
+    assert "event.detail.successful" not in html
+
+
+def test_table_query_is_sanitized_before_reaching_the_retarget_header(client):
+    bad = client.post("/ui/teams?table=a%0Ab", data={"name": ""})
+    assert bad.status_code == 422
+    assert bad.headers["HX-Retarget"] == "#add-errors-team"
+    ok = client.post("/ui/teams?table=ok-1_x", data={"name": ""})
+    assert ok.headers["HX-Retarget"] == "#add-errors-ok-1_x"

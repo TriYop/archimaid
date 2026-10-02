@@ -57,7 +57,7 @@
 {% macro add_form(resource, lookups, ctx, table_id, fixed) -%}
 <details class="add">
   <summary role="button" class="outline">Add {{ resource.title | lower }}</summary>
-  <form hx-post="{{ resource.url(ctx) }}?table={{ table_id }}" hx-target="#rows-{{ table_id }}" hx-swap="afterbegin" hx-on::after-request="if (event.detail.successful) this.reset()">
+  <form hx-post="{{ resource.url(ctx) }}?table={{ table_id }}" hx-target="#rows-{{ table_id }}" hx-swap="afterbegin" hx-on::after-request="if (event.detail.xhr.status < 400) this.reset()">
     <div id="add-errors-{{ table_id }}"></div>
     {%- for f in resource.form() if f.name not in fixed %}
     <label>{{ f.label }}{% if f.required %} *{% endif %}

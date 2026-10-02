@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
@@ -59,7 +60,7 @@ def resource_router(
         parent: UUID | None = Depends(parent_dep),
         table: str | None = None,
     ):
-        table_id = table or resource.slug
+        table_id = table if table and re.fullmatch(r"[A-Za-z0-9_-]+", table) else resource.slug
         data, problems = parse_form(form, resource.form(), uuid_fields=resource.hidden_uuid)
         status = 422
         if resource.parent_field:
@@ -98,7 +99,7 @@ def resource_router(
         form: dict[str, str] = Depends(form_data),
         parent: UUID | None = Depends(parent_dep),
     ):
-        scoped(entity_id, parent)
+        entity = scoped(entity_id, parent)
         data, problems = parse_form(form, resource.form())
         status = 422
         if not problems:
@@ -108,7 +109,7 @@ def resource_router(
                 problems, status = inline_problem(exc)
             else:
                 return row_page(request, "_row.html", view(entity))
-        values = {**form, "id": str(entity_id)}
+        values = {**view(entity), **form, "id": str(entity_id)}
         return row_page(request, "_edit_row.html", values, status_code=status, messages=problems)
 
     @router.delete("/{entity_id}")
