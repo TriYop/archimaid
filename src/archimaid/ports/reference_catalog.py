@@ -10,7 +10,9 @@ class ReferenceCatalog(Protocol):
 
     def get(self, kind: str, code: str) -> ReferenceValue: ...
 
-    def list(self, kind: str) -> list[ReferenceValue]: ...
+    def list(self, kind: str) -> list[ReferenceValue]:
+        """Ranked kinds (those with a ``rank``) by rank descending then code, others by code."""
+        ...
 
     def create(self, kind: str, value: ReferenceValue) -> ReferenceValue:
         """Raises AlreadyExists if the code is taken."""

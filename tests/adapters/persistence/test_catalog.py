@@ -43,6 +43,12 @@ def test_list_and_exists(catalog):
     assert not catalog.exists("usage_mode", "NOPE")
 
 
+def test_ranked_kinds_list_by_rank_descending(catalog):
+    expected = ["EXTREME", "SERIOUS", "MODERATE", "LOW"]
+    assert [v.code for v in catalog.list("integrity_level")] == expected
+    assert [v.code for v in catalog.list("availability_level")] == expected
+
+
 def test_unknown_kind_and_unknown_code_are_not_found(catalog):
     with pytest.raises(NotFound):
         catalog.list("nope")

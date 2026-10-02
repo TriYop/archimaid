@@ -1,8 +1,10 @@
 import logging
 from dataclasses import asdict
+from typing import Any
 
 from sqlalchemy import Engine, Table, delete, insert, select, update
 from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.sql.expression import ColumnElement
 
 from archimaid.adapters.persistence.pg_errors import is_foreign_key_violation, is_unique_violation
 from archimaid.adapters.persistence.tables import REFERENCE_TABLES
@@ -33,7 +35,7 @@ class PostgresReferenceCatalog:
     def list(self, kind: str) -> list[ReferenceValue]:
         table = self._table(kind)
         with self._engine.connect() as conn:
-            rows = conn.execute(select(table).order_by(table.c.code)).all()
+            rows = conn.execute(select(table).order_by(*self._ordering(table))).all()
         return [REFERENCE_KINDS[kind](**row._mapping) for row in rows]
 
     def create(self, kind: str, value: ReferenceValue) -> ReferenceValue:
@@ -78,6 +80,12 @@ class PostgresReferenceCatalog:
             raise self._invalid(kind, exc) from exc
         if matched == 0:
             raise NotFound(f"{kind} {code!r} not found")
+
+    @staticmethod
+    def _ordering(table: Table) -> tuple[ColumnElement[Any], ...]:
+        if "rank" in table.c:
+            return (table.c.rank.desc(), table.c.code)
+        return (table.c.code,)
 
     @staticmethod
     def _invalid(kind: str, exc: DataError) -> InvalidEntity:

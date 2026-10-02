@@ -296,3 +296,8 @@ def test_reference_code_with_a_bad_format_is_422_and_not_stored(client, code):
     assert client.get("/reference/usage_mode").json() == before
     put = client.put("/reference/usage_mode/PROXY", json={"code": code, "label": "x"})
     assert put.status_code == 422
+
+
+def test_ranked_reference_values_are_listed_by_rank(client):
+    codes = [v["code"] for v in client.get("/reference/integrity_level").json()]
+    assert codes == ["EXTREME", "SERIOUS", "MODERATE", "LOW"]

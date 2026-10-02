@@ -82,3 +82,11 @@ def test_catalog_delete_of_value_in_use_is_blocked():
     catalog.mark_in_use("function_category", "BUSINESS")
     with pytest.raises(ReferenceInUse):
         catalog.delete("function_category", "BUSINESS")
+
+
+def test_fake_catalog_lists_ranked_kinds_by_rank_descending():
+    catalog = default_catalog()
+    expected = ["EXTREME", "SERIOUS", "MODERATE", "LOW"]
+    assert [v.code for v in catalog.list("integrity_level")] == expected
+    assert [v.code for v in catalog.list("availability_level")] == expected
+    assert [v.code for v in catalog.list("usage_mode")] == ["CONSUMER", "PROXY", "SOURCE"]

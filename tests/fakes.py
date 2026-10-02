@@ -9,6 +9,7 @@ from archimaid.domain.reference import (
     ConfidentialityLevel,
     FunctionCategory,
     IntegrityLevel,
+    RankedValue,
     ReferenceValue,
     TechnologyType,
     TechStandardStatus,
@@ -73,7 +74,10 @@ class InMemoryReferenceCatalog:
 
     def list(self, kind: str) -> list[ReferenceValue]:
         table = self._table(kind)
-        return [table[code] for code in sorted(table)]
+        values = [table[code] for code in sorted(table)]
+        if issubclass(REFERENCE_KINDS[kind], RankedValue):
+            values.sort(key=lambda v: -v.rank)  # stable, so ties stay by code
+        return values
 
     def create(self, kind: str, value: ReferenceValue) -> ReferenceValue:
         table = self._table(kind)
