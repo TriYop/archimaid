@@ -225,6 +225,7 @@ TABS = (
     ("data-types", "Data types"),
     ("technologies", "Technologies"),
     ("data-flows", "Data flows"),
+    ("diagram", "Diagram"),
 )
 
 

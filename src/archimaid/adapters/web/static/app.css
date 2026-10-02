@@ -8,3 +8,5 @@ tr.editing td { vertical-align: top; }
 tr.editing input, tr.editing select, tr.editing textarea { margin-bottom: 0; }
 nav.tabs ul { flex-wrap: wrap; }
 nav.tabs a[aria-current="page"] { font-weight: bold; }
+.diagram { overflow-x: auto; margin-top: 1rem; }
+.diagram object { display: block; max-width: none; }

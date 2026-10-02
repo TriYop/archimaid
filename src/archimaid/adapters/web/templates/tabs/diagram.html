@@ -1,0 +1,9 @@
+<p>
+  <small>Hover a box or an arrow for details.</small>
+  <a href="/ui/applications/{{ app.id }}/diagram.svg?download=1" download>Download SVG</a>
+</p>
+<div class="diagram">
+  <object type="image/svg+xml" data="/ui/applications/{{ app.id }}/diagram.svg" width="{{ diagram.width }}" height="{{ diagram.height }}" aria-label="Interaction diagram of {{ app.name }}">
+    <a href="/ui/applications/{{ app.id }}/diagram.svg">Open the diagram</a>
+  </object>
+</div>

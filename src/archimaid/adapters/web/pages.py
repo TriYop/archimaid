@@ -1,8 +1,10 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
+from archimaid.adapters.web.diagram import build_diagram, draw
+from archimaid.adapters.web.diagram.files import filename_slug
 from archimaid.adapters.web.errors import UiError, inline_problem
 from archimaid.adapters.web.forms import form_data, parse_form
 from archimaid.adapters.web.render import Lookups, present_rows, render
@@ -79,6 +81,8 @@ def pages_router(services: Services) -> APIRouter:
             context["incoming_rows"] = present_rows(
                 services.data_flows, services.data_flows.list(target_application_id=app.id)
             )
+        elif tab == "diagram":
+            context["diagram"] = draw(build_diagram(services, app.id))
         return context
 
     @router.get("/ui/applications/{application_id}")
@@ -135,5 +139,24 @@ def pages_router(services: Services) -> APIRouter:
             for f in services.data_flows.list()
         ]
         return render(request, "data_flows.html", flows=flows)
+
+    @router.get("/ui/applications/{application_id}/diagram.svg")
+    def application_diagram(application_id: UUID, download: int = 0):
+        app = _fetch(services.applications, application_id)
+        diagram = draw(build_diagram(services, application_id))
+        headers = {
+            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        }
+        if download:
+            headers["Content-Disposition"] = (
+                f'attachment; filename="{filename_slug(app.name)}-interactions.svg"'
+            )
+        return Response(
+            content=diagram.svg,
+            media_type="image/svg+xml; charset=utf-8",
+            headers=headers,
+        )
 
     return router
