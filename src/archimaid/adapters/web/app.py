@@ -9,8 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from archimaid.adapters.web.errors import UiError, ui_error_handler
 from archimaid.adapters.web.pages import pages_router
 from archimaid.adapters.web.resource_router import resource_router
-from archimaid.adapters.web.resources import PERSONA, TEAM, Resource
+from archimaid.adapters.web.resources import APPLICATION, MEMBER, PERSONA, TEAM, Resource
 from archimaid.application.services import Services
+from archimaid.domain.errors import NotFound
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -30,8 +31,17 @@ def install_web(app: FastAPI, services: Services) -> None:
 
     app.include_router(pages_router(services), include_in_schema=False)
 
+    def team_parent(team_id: UUID) -> UUID:
+        try:
+            services.teams.get(team_id)
+        except NotFound as exc:
+            raise UiError(exc) from exc
+        return team_id
+
     routed: list[tuple[Resource, Callable[..., UUID] | None]] = [
         (TEAM, None),
+        (MEMBER, team_parent),
+        (APPLICATION, None),
         (PERSONA, None),
     ]
     for resource, parent in routed:

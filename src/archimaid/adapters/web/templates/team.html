@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_resource.html" import table %}
+{% block title %}{{ team.name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul><li><a href="/ui/teams">Teams</a></li><li>{{ team.name }}</li></ul>
+</nav>
+<h1>{{ team.name }}</h1>
+{{ table(TEAM, team_rows, lookups, {}, "team", add=False) }}
+<h2>Members</h2>
+{{ table(MEMBER, member_rows, lookups, {"team_id": team.id}, "members") }}
+<h2>Applications</h2>
+{{ table(APPLICATION, app_rows, lookups, {}, "applications", {"team_id": team.id}) }}
+{% endblock %}
