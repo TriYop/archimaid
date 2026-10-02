@@ -121,7 +121,7 @@ def resource_router(
             raise UiError(exc) from exc
         if resource.page and resource.after_delete:
             current = urlparse(request.headers.get("HX-Current-URL", "")).path
-            if current == resource.page.format(id=entity_id):
+            if current.lower() == resource.page.format(id=entity_id).lower():
                 target = resource.after_delete.format(**vars(entity))
                 return Response(status_code=200, headers={"HX-Redirect": target})
         return HTMLResponse("")

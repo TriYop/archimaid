@@ -30,7 +30,8 @@ def test_data_flows_tab_splits_outgoing_and_incoming(client, services):
     incoming = out[out.index('id="rows-incoming"') :]
     assert f'<tr id="data-flow-{flow.id}"' in outgoing
     assert "<tr id=" not in incoming
-    assert "Ledger" in outgoing and "Billing › Invoice" in outgoing and "Source" in outgoing
+    assert "Ledger" in outgoing and "Billing › Invoice" in outgoing
+    assert "<td>Source</td>" in outgoing
     inbound = client.get(f"/ui/applications/{target.id}/tabs/data-flows").text
     inbound_in = inbound[inbound.index('id="rows-incoming"') :]
     assert f'<tr id="data-flow-{flow.id}"' in inbound_in
@@ -130,7 +131,7 @@ def test_overview_lists_every_flow_with_links_and_no_actions(client, services):
     assert response.status_code == 200 and "<html" in html
     assert f'href="/ui/applications/{source.id}"' in html and "Billing" in html
     assert f'href="/ui/applications/{target.id}"' in html and "Ledger" in html
-    assert "Invoice" in html and "Source" in html and "export" in html
+    assert "Invoice" in html and "<td>Source</td>" in html and "export" in html
     assert "hx-delete" not in html and "hx-get" not in html and "hx-post" not in html
 
 
@@ -151,3 +152,28 @@ def test_an_application_used_by_a_flow_cannot_be_deleted_in_the_ui(client, servi
     assert response.status_code == 409
     assert response.headers["HX-Retarget"] == "#flash" and "still referenced" in response.text
     assert services.applications.get(target.id).name == "Ledger"
+
+
+PLACEHOLDER = '<option value="" disabled selected>Choose…</option>'
+
+
+def test_required_selects_of_the_add_forms_start_on_a_disabled_placeholder(client, services):
+    source, _, _ = setup_two_apps(services)
+    html = client.get(f"/ui/applications/{source.id}/tabs/data-flows").text
+    assert PLACEHOLDER in html
+    for form in html.split("<form")[1:]:
+        form = form[: form.index("</form>")]
+        for name in ("source_application_id", "target_application_id", "data_type_id"):
+            if f'<select name="{name}"' in form:
+                select = form[form.index(f'<select name="{name}"') :]
+                assert PLACEHOLDER in select[: select.index("</select>")]
+        usage = form[form.index('<select name="usage_mode"') :]
+        assert PLACEHOLDER not in usage[: usage.index("</select>")]
+        assert '<option value="">—</option>' in usage
+
+
+def test_edit_row_does_not_select_the_placeholder(client, services):
+    source, target, data_type = setup_two_apps(services)
+    flow = make_flow(services, source, target, data_type)
+    html = client.get(f"/ui/data-flows/{flow.id}/edit").text
+    assert '<option value="" disabled selected>' not in html

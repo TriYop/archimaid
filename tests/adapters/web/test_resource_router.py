@@ -171,7 +171,10 @@ def test_persona_add_edit_save_delete(client, services):
 
 def test_add_form_resets_only_on_non_error_status(client):
     html = client.get("/ui/teams").text
-    assert "event.detail.xhr.status < 400" in html
+    assert (
+        'hx-on::after-request="if (event.detail.xhr.status >= 200 '
+        '&& event.detail.xhr.status < 400) this.reset()"'
+    ) in html
     assert "event.detail.successful" not in html
 
 
@@ -181,3 +184,35 @@ def test_table_query_is_sanitized_before_reaching_the_retarget_header(client):
     assert bad.headers["HX-Retarget"] == "#add-errors-team"
     ok = client.post("/ui/teams?table=ok-1_x", data={"name": ""})
     assert ok.headers["HX-Retarget"] == "#add-errors-ok-1_x"
+
+
+def test_add_forms_disable_the_submit_button_while_a_request_is_in_flight(client, services):
+    html = client.get("/ui/teams").text
+    assert 'hx-disabled-elt="find button[type=submit]"' in html
+    app = services.applications.create({"team_id": make_team(services).id, "name": "Billing"})
+    tab = client.get(f"/ui/applications/{app.id}/tabs/data-flows").text
+    assert tab.count('hx-disabled-elt="find button[type=submit]"') == 2
+
+
+def test_flash_is_cleared_before_every_request(client):
+    html = client.get("/ui/teams").text
+    assert (
+        'hx-on::before-request="document.getElementById(\'flash\').replaceChildren()"' in html
+    )
+
+
+def test_team_delete_confirmation_warns_about_members(client, services):
+    team = make_team(services)
+    html = client.get("/ui/teams").text
+    row = html[html.index(f'<tr id="team-{team.id}"') :]
+    row = row[: row.index("</tr>")]
+    assert 'hx-confirm="Delete this team and its members?"' in row
+
+
+def test_own_page_delete_redirects_even_with_an_uppercase_uuid(client, services):
+    team = make_team(services)
+    app = services.applications.create({"team_id": team.id, "name": "Billing"})
+    current = f"http://testserver/ui/applications/{str(app.id).upper()}?tab=details"
+    response = client.delete(f"/ui/applications/{app.id}", headers={"HX-Current-URL": current})
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"] == f"/ui/teams/{team.id}"

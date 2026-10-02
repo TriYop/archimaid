@@ -10,7 +10,8 @@
 <input type="number" step="1" name="{{ field.name }}" aria-label="{{ field.label }}" value="{{ shown }}"{% if field.required %} required{% endif %}>
 {%- elif field.widget in ('select_ref', 'select_entity') -%}
 <select name="{{ field.name }}" aria-label="{{ field.label }}"{% if field.required %} required{% endif %}>
-  {%- if not field.required %}<option value="">—</option>{% endif %}
+  {%- if not field.required %}<option value="">—</option>
+  {%- elif field.widget in ('select_ref', 'select_entity') %}<option value="" disabled{% if shown == '' %} selected{% endif %}>Choose…</option>{% endif %}
   {%- for group, options in lookups.choices(field) %}
     {%- if group %}<optgroup label="{{ group }}">{% endif %}
     {%- for opt in options %}<option value="{{ opt.value }}"{% if opt.value == shown|string %} selected{% endif %}>{{ opt.label }}</option>{% endfor %}
@@ -57,7 +58,7 @@
 {% macro add_form(resource, lookups, ctx, table_id, fixed) -%}
 <details class="add">
   <summary role="button" class="outline">Add {{ resource.title | lower }}</summary>
-  <form hx-post="{{ resource.url(ctx) }}?table={{ table_id }}" hx-target="#rows-{{ table_id }}" hx-swap="afterbegin" hx-on::after-request="if (event.detail.xhr.status < 400) this.reset()">
+  <form hx-post="{{ resource.url(ctx) }}?table={{ table_id }}" hx-target="#rows-{{ table_id }}" hx-swap="afterbegin" hx-disabled-elt="find button[type=submit]" hx-on::after-request="if (event.detail.xhr.status >= 200 && event.detail.xhr.status < 400) this.reset()">
     <div id="add-errors-{{ table_id }}"></div>
     {%- for f in resource.form() if f.name not in fixed %}
     <label>{{ f.label }}{% if f.required %} *{% endif %}

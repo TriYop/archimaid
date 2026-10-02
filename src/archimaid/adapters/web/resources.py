@@ -74,7 +74,7 @@ TEAM = Resource(
     ),
     page="/ui/teams/{id}",
     after_delete="/ui/teams",
-    delete_warning="Delete this team?",
+    delete_warning="Delete this team and its members?",
 )
 
 MEMBER = Resource(

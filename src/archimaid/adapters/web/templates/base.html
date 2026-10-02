@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/ui/static/app.css">
   <script src="/ui/static/htmx.min.js" defer></script>
 </head>
-<body>
+<body hx-on::before-request="document.getElementById('flash').replaceChildren()">
   <header class="container">
     <nav>
       <ul><li><strong>Archimaid</strong></li></ul>
