@@ -186,6 +186,21 @@ def test_many_neighbours_and_flows_stay_valid():
     assert all(a.y2 < a.y1 for a in layout.arrows)
     for rect in (*layout.targets, *layout.sources, layout.frame):
         assert inside_canvas(layout, rect)
+    # Extended: arrow frame ends inside frame and properly spaced
+    target_arrows = [a for a in layout.arrows if a.kind == "target"]
+    source_persona_arrows = [a for a in layout.arrows if a.kind in ("source", "persona")]
+    assert all(layout.frame.x <= a.x1 <= layout.frame.right for a in target_arrows)
+    target_x1s = sorted(a.x1 for a in target_arrows)
+    assert all(b - a >= 15.99 for a, b in zip(target_x1s, target_x1s[1:], strict=False))
+    assert all(layout.frame.x <= a.x2 <= layout.frame.right for a in source_persona_arrows)
+    sp_x2s = sorted(a.x2 for a in source_persona_arrows)
+    assert all(b - a >= 15.99 for a, b in zip(sp_x2s, sp_x2s[1:], strict=False))
+    # Extended: personas and labels inside canvas
+    assert all(p.x >= -EPS and p.x + p.w <= layout.width + EPS for p in layout.personas)
+    assert all(
+        0 <= a.label.x and a.label.x + a.label.w <= layout.width
+        for a in layout.arrows if a.label
+    )
 
 
 def test_a_persona_shared_by_functions_is_drawn_once_with_one_arrow_each():
@@ -212,3 +227,55 @@ def test_widths_are_clamped_to_their_ranges():
     assert all(120 - EPS <= r.w <= 240 + EPS for r in (*layout.targets, *layout.sources))
     tiny = compute_layout(DiagramModel("A", targets=(neighbour("x", flow("y")),)))
     assert tiny.targets[0].w == pytest.approx(120)
+
+
+def test_frame_grows_to_fit_its_arrows():
+    many = tuple(
+        neighbour(f"App {i:02d} with a rather long name", *(flow(f"Type {j}") for j in range(3)))
+        for i in range(30)
+    )
+    functions = tuple(DiagramFunction(f"Function {i}", f"Persona {i % 4}") for i in range(12))
+    layout_many = compute_layout(DiagramModel("Hub", functions, targets=many, sources=many))
+    layout_few = compute_layout(DiagramModel("Hub", functions, targets=(), sources=()))
+    # Frame grows to fit the arrows from many neighbours
+    assert layout_many.frame.w > layout_few.frame.w
+    # FULL frame width is unchanged by the fix (since 24 + 36*max(top,bottom) is smaller)
+    layout_full = compute_layout(FULL)
+    assert layout_full.frame.w == pytest.approx(715.1200000000001)
+
+
+def test_all_labels_stay_inside_the_canvas():
+    # Test FULL and SMALL (should be unaffected)
+    for layout in [compute_layout(FULL), compute_layout(SMALL)]:
+        for arrow in layout.arrows:
+            if arrow.label:
+                assert 0 <= arrow.label.x, f"Label x={arrow.label.x} < 0"
+                assert (
+                    arrow.label.x + arrow.label.w <= layout.width
+                ), f"Label right={arrow.label.x + arrow.label.w} > {layout.width}"
+    # Test a model with single box whose parallel flows put labels left of the box
+    single_left = DiagramModel(
+        application="A",
+        targets=(neighbour("x", *(flow(f"T{i}") for i in range(4))),),
+    )
+    layout = compute_layout(single_left)
+    for arrow in layout.arrows:
+        if arrow.label:
+            assert 0 <= arrow.label.x, f"Label x={arrow.label.x} < 0"
+            assert (
+                arrow.label.x + arrow.label.w <= layout.width
+            ), f"Label right={arrow.label.x + arrow.label.w} > {layout.width}"
+
+
+def test_persona_fan_out_starts_inside_the_persona_box():
+    model = DiagramModel(
+        application="A",
+        functions=tuple(DiagramFunction(f"Function {i}", "Pat") for i in range(12)),
+    )
+    layout = compute_layout(model)
+    assert len(layout.personas) == 1
+    p = layout.personas[0]
+    for arrow in of_kind(layout, "persona"):
+        assert p.x <= arrow.x1 <= p.x + p.w, (
+            f"Persona arrow x1={arrow.x1} outside box [{p.x}, {p.x + p.w}]"
+        )

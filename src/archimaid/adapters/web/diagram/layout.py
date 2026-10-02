@@ -115,6 +115,7 @@ def _label(
     k: int,
     n: int,
     at: float,
+    canvas_w: float = 0,
 ) -> Label:
     """A label beside the line at fraction `at` from (x1, y1); parallel lines alternate sides."""
     shown = truncate(text, 24)
@@ -123,6 +124,8 @@ def _label(
     my += (k // 2) * 16  # the third and later parallel labels are staggered
     left_of_line = n > 1 and k % 2 == 0
     x = mx - 5 - width if left_of_line else mx + 5
+    # Clamp label x into the canvas
+    x = _clamp(x, 4, canvas_w - width - 4) if canvas_w > 0 else x
     return Label(shown, x, my, width)
 
 
@@ -142,10 +145,18 @@ def compute_layout(model: DiagramModel) -> Layout:
     # --- sizes
     cell_w = [_clamp(text_width(truncate(f.name, 24)) + 24, 100, 200) for f in functions] or [140.0]
     cell_gaps = CELL_GAP * (len(cell_w) - 1)
+    # Count arrows for frame width calculation
+    top_arrows = sum(len(n.flows) for n in model.targets)
+    # Count bottom arrows: flows from sources + persona->function arrows
+    persona_set = set(f.persona for f in functions if f.persona)
+    bottom_arrows = sum(len(n.flows) for n in model.sources) + sum(
+        len([i for i, f in enumerate(functions) if f.persona == p]) for p in persona_set
+    )
     frame_w = max(
         260.0,
         text_width(truncate(model.application, 40), 15) + 40,
         sum(cell_w) + cell_gaps + 2 * PAD,
+        24 + 36 * max(top_arrows, bottom_arrows),
     )
     scale = (frame_w - 2 * PAD - cell_gaps) / sum(cell_w)
     cell_w = [w * scale for w in cell_w]
@@ -228,7 +239,7 @@ def compute_layout(model: DiagramModel) -> Layout:
                 x_box,
                 y_box,
                 _flow_title(flow),
-                _label(flow.data_type, x_frame, y_frame, x_box, y_box, k, n, 0.5),
+                _label(flow.data_type, x_frame, y_frame, x_box, y_box, k, n, 0.5, canvas_w),
             )
         )
 
@@ -267,6 +278,17 @@ def compute_layout(model: DiagramModel) -> Layout:
                     next((c for c in nearest if free(c)), want),
                 )
                 occupied.append(x_frame)
+                label = _label(
+                    flow.data_type,
+                    x_box,
+                    y_src,
+                    x_frame,
+                    frame_bottom,
+                    k,
+                    n,
+                    0.18,
+                    canvas_w,
+                )
                 arrows.append(
                     Arrow(
                         "source",
@@ -275,7 +297,7 @@ def compute_layout(model: DiagramModel) -> Layout:
                         x_frame,
                         frame_bottom,
                         _flow_title(flow),
-                        _label(flow.data_type, x_box, y_src, x_frame, frame_bottom, k, n, 0.18),
+                        label,
                     )
                 )
 
@@ -286,6 +308,8 @@ def compute_layout(model: DiagramModel) -> Layout:
         for n, i in enumerate(indexes):
             off = (n - (len(indexes) - 1) / 2) * 6
             x_start = per_x[p] + per_w[p] / 2 + off
+            # Clamp persona arrow start point inside the persona box
+            x_start = _clamp(x_start, per_x[p] + 4, per_x[p] + per_w[p] - 4)
             arrows.append(
                 Arrow(
                     "persona",
