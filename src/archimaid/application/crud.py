@@ -69,7 +69,7 @@ class CrudService[T: Entity]:
         self.get(entity_id)
         self._repo.delete(entity_id)
 
-    def present_many(self, entities: Sequence[T]) -> list[Any]:
+    def present_many(self, entities: Sequence[T]) -> Sequence[Any]:
         """Objects handed to the API layer. Subclasses may add derived fields."""
         return list(entities)
 

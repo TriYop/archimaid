@@ -1,4 +1,5 @@
 from dataclasses import fields
+from typing import Any
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, Table, Text, Uuid
 
@@ -20,7 +21,7 @@ metadata = MetaData()
 
 def _catalog_table(kind: str, cls: type[ReferenceValue]) -> Table:
     base = {"code", "label", "description"}
-    columns = [
+    columns: list[Column[Any]] = [
         Column("code", Text, primary_key=True),
         Column("label", Text, nullable=False),
         Column("description", Text),

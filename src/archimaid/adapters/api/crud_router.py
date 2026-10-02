@@ -42,7 +42,7 @@ def crud_router[T: Entity](
             raise NotFound(f"{type(entity).__name__} {entity_id} not found")
         return entity
 
-    @router.get("", response_model=list[out_model])
+    @router.get("", response_model=list[out_model])  # type: ignore[valid-type]  # dynamic model
     def list_items(request: Request, parent: UUID | None = Depends(parent_dep)):
         selected: dict[str, Any] = {}
         for name, convert in query_filters.items():

@@ -16,7 +16,8 @@ class PostgresReferenceCatalog:
     def exists(self, kind: str, code: str) -> bool:
         table = self._table(kind)
         with self._engine.connect() as conn:
-            return conn.execute(select(table.c.code).where(table.c.code == code)).first() is not None
+            found = conn.execute(select(table.c.code).where(table.c.code == code)).first()
+        return found is not None
 
     def get(self, kind: str, code: str) -> ReferenceValue:
         table = self._table(kind)

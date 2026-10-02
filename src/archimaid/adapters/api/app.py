@@ -1,11 +1,14 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from archimaid.adapters.api import schemas
 from archimaid.adapters.api.crud_router import crud_router
 from archimaid.adapters.api.errors import install_error_handlers
 from archimaid.adapters.api.reference_router import reference_router
+from archimaid.application.crud import CrudService
 from archimaid.application.services import Services
 
 
@@ -47,11 +50,12 @@ def create_app(services: Services) -> FastAPI:
         prefix="/applications",
         tags=["applications"],
     )
-    for segment, service, in_model, out_model in (
+    nested: tuple[tuple[str, CrudService[Any], type[BaseModel], type[BaseModel]], ...] = (
         ("functions", services.functions, schemas.FunctionIn, schemas.FunctionOut),
         ("data-types", services.data_types, schemas.DataTypeIn, schemas.DataTypeOut),
         ("technologies", services.technologies, schemas.TechnologyIn, schemas.TechnologyOut),
-    ):
+    )
+    for segment, service, in_model, out_model in nested:
         app.include_router(
             crud_router(
                 service=service,

@@ -202,6 +202,8 @@ def test_delete_persona_used_by_function_is_blocked(repos):  # Review Focus test
     app = add_app(repos, team)
     persona = Persona(name="Accountant", **meta())
     repos.personas.add(persona)
-    repos.functions.add(Function(application_id=app.id, name="Invoice", persona_id=persona.id, **meta()))
+    repos.functions.add(
+        Function(application_id=app.id, name="Invoice", persona_id=persona.id, **meta())
+    )
     with pytest.raises(ReferenceInUse):
         repos.personas.delete(persona.id)

@@ -159,7 +159,8 @@ def test_reaching_a_nested_resource_through_the_wrong_parent_is_404(client):
 def test_nested_routes_under_a_missing_parent_are_404(client):
     ghost = uuid4()
     assert client.get(f"/applications/{ghost}/functions").status_code == 404
-    assert client.post(f"/applications/{ghost}/technologies", json={"name": "PG"}).status_code == 404
+    response = client.post(f"/applications/{ghost}/technologies", json={"name": "PG"})
+    assert response.status_code == 404
     assert client.get(f"/teams/{ghost}/members").status_code == 404
 
 
@@ -201,7 +202,8 @@ def test_data_flows_validate_references_and_filter(client):
     }
     flow = post(client, "/data-flows", body)
     assert flow["usage_mode"] == "SOURCE"
-    assert client.post("/data-flows", json={**body, "data_type_id": str(uuid4())}).status_code == 422
+    response = client.post("/data-flows", json={**body, "data_type_id": str(uuid4())})
+    assert response.status_code == 422
     assert client.post("/data-flows", json={**body, "usage_mode": "NOPE"}).status_code == 422
     found = client.get(f"/data-flows?source_application_id={source['id']}").json()
     assert [f["id"] for f in found] == [flow["id"]]
@@ -254,7 +256,8 @@ def test_reference_blank_code_is_422(client):
 
 
 def test_reference_duplicate_code_is_409(client):  # Review Focus test (2)
-    assert client.post("/reference/usage_mode", json={"code": "SOURCE", "label": "x"}).status_code == 409
+    response = client.post("/reference/usage_mode", json={"code": "SOURCE", "label": "x"})
+    assert response.status_code == 409
     response = client.put("/reference/usage_mode/PROXY", json={"code": "SOURCE", "label": "x"})
     assert response.status_code == 409
 
