@@ -1,0 +1,10 @@
+# Host port 55432 (not 5432) because 5432 is commonly taken by a local Postgres.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: archimaid
+      POSTGRES_PASSWORD: archimaid
+      POSTGRES_DB: archimaid
+    ports:
+      - "55432:5432"
