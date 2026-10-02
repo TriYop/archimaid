@@ -45,7 +45,7 @@ src/archimaid/adapters/web/
 - `create_app(services)` includes `web_router(services)` next to the JSON routers. `main.py` is unchanged.
 - The web adapter imports only `archimaid.application`, `archimaid.domain` and its own modules. It imports nothing from `adapters/persistence`.
 - The templates and static files are located relative to the package (`Path(__file__).parent`) and ship in the wheel.
-- Dependencies added: `jinja2` and `python-multipart` (pure Python). The vendored `htmx.min.js` (a 2.x release) and `pico.min.css` (a 2.x release) are committed under `static/`. `VENDORED.md` records each file's version, source URL, SHA-256 and license (both MIT).
+- Dependencies added: `jinja2` and `python-multipart` (pure Python). The vendored `htmx.min.js` (a 2.x release) and `pico.min.css` (a 2.x release) are committed under `static/`. `VENDORED.md` records each file's version, source URL, SHA-256 and license, taken from each package's `license` field (both are permissive: htmx is 0BSD and Pico.css is MIT, with no copyleft).
 
 ## URLs
 
@@ -96,7 +96,9 @@ Nested bases return 404 for a missing parent and for an id that belongs to anoth
 ## Interaction
 
 - Actions target the closest row (`hx-target="closest tr"`, `hx-swap="outerHTML"`). The add form prepends the new row on success and clears itself.
-- Full-page requests get a complete page. Requests with the `HX-Request` header get only the fragment. Rows, edit rows, add forms and error banners are shared templates, so a page and its fragments never drift apart.
+- Page routes (teams, a team, an application, personas, data flows, reference data) return complete pages. Tab, row, edit-row, add and error routes return fragments. This is decided by the route, not by sniffing the `HX-Request` header. Rows, edit rows, add forms and error banners are shared templates, so a page and its fragments never drift apart.
+- Errors that do not belong to a form (a missing record, a delete blocked by references) are returned with `HX-Retarget: #flash` and `HX-Reswap: innerHTML`, so the message appears in a flash area at the top of the page and the table is left as it was. The same error on a normal page navigation renders a full error page with the same status.
+- Deleting a record from its own page (the team header row, the application Details tab) redirects to its parent list through an `HX-Redirect` response header.
 - Deletes use `hx-confirm`. Deleting an application warns that it also removes its functions, data types and technologies.
 - The 4xx statuses are swapped in. The base template sets HTMX's `responseHandling` in a `<meta name="htmx-config">` tag so 404, 409 and 422 responses are swapped, with no custom JavaScript.
 - Pages and tabs read without JavaScript. Editing needs JavaScript, because HTMX sends the `PUT` and `DELETE` requests.
@@ -118,8 +120,8 @@ The field lists are those in "Pages". Required fields are the entities' required
 ## Forms and errors
 
 - `forms.py` turns the submitted fields into the dict the service expects: surrounding whitespace is stripped, a blank optional field becomes `None`, an empty select becomes `None`, numbers become ints and entity ids become UUIDs. A required text field stays `""`, so the domain's own "must not be blank" error appears.
-- A value that cannot be parsed (for example a non-numeric `rank`) is reported next to its field with a 422.
-- Domain errors from the services are shown as a banner (`role="alert"`) at the top of the form or row with the same text the JSON API uses. They map to statuses as in the backend spec: `InvalidEntity`, `InvalidReferenceCode` and `DanglingReference` give 422, `ReferenceInUse` and `AlreadyExists` give 409, and `NotFound` gives 404. Domain errors do not reliably name the field, so they are not attached to one.
+- A value that cannot be parsed (for example a non-numeric `rank`) gives a 422 and a message that names the field ("Rank: must be a whole number").
+- Errors that a form can show in place (`InvalidEntity`, `InvalidReferenceCode`, `DanglingReference`, `AlreadyExists`) are shown as a banner (`role="alert"`) at the top of the add form or the edit row, with the same text the JSON API uses. Statuses are as in the backend spec: 422 for the first three and 409 for `AlreadyExists`. Domain errors do not reliably name the field, so they are not attached to one. `NotFound` (404) and `ReferenceInUse` (409) use the flash area described under Interaction.
 - The form keeps what the user typed when it is re-rendered with an error.
 - Jinja2 autoescaping is on for all templates, including text inside confirm dialogs.
 - There is no CSRF handling, because there are no sessions or cookies and no authentication in v1.
