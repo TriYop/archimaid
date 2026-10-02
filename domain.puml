@@ -1,6 +1,12 @@
 @startuml
 
-package "Value Objects" <<node>> {
+package "Value Objects (configuration tables)" <<node>> {
+    note as CatalogNote
+        Each "enum" below is a configuration table keyed by a text code
+        (not a code enum). The values shown are the seeded defaults and can be
+        edited through the /reference API. Entities store the code.
+    end note
+
     enum AvailabilityLevel{
      EXTREME
      SERIOUS
@@ -118,6 +124,7 @@ package "Aggregate: Application" <<aggregate>> {
         -Name: String
         -Description: String | null
         -Category: FunctionCategory | null
+        -PersonaId: UUID | null
         -created_at: DateTime
         -updated_at: DateTime
         +validate(): Boolean
@@ -165,7 +172,9 @@ package "Aggregate: Application" <<aggregate>> {
         -updated_at: DateTime
         +validate(): Boolean
     }
+}
 
+package "Global entity: Persona" <<aggregate>> {
     class Persona {
         -PersonaId: UUID
         -Name: String
@@ -176,6 +185,7 @@ package "Aggregate: Application" <<aggregate>> {
         +validate(): Boolean
 
     }
+
 }
 
 
@@ -194,17 +204,17 @@ package "Aggregate: Application" <<aggregate>> {
 
 Team"1" -- "*" Application : owns
 Team "1" -- "*" TeamMember : Contains
-Team "1" -- "*" Application : same team
 
 Application "1" -- "*" Function : has
 Application "1" -- "*" DataType : uses
 Application "1" -- "*" DataFlow : produces
 Application "1" -- "*" Technology : runs
 
-Persona "1" -- "*" Function : exercises
+Persona "1" -- "*" Function : exercises (nullable PersonaId)
 
 DataFlow "*" -- "1" DataType : transfers
-DataFlow "1" -- "*" Application : references
+DataFlow "*" -- "1" Application : SourceApplicationId
+DataFlow "*" -- "1" Application : TargetApplicationId
 
 ' -----------------------
 Application --> ConfidentialityLevel : confidentiality_level
@@ -214,7 +224,7 @@ Application --> TraceabilityLevel : traceability_level
 
 Function --> FunctionCategory : Category
 DataType --> ConfidentialityLevel : Confidentiality 
-DataType --> UsageMode : Usage mode
+DataFlow --> UsageMode : UsageMode
 Technology --> TechnologyType : Type
 Technology --> TechStandardStatus : StandardStatus
 
