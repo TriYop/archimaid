@@ -6,7 +6,7 @@ import pytest
 from archimaid.adapters.persistence.catalog import PostgresReferenceCatalog
 from archimaid.adapters.persistence.repository import build_repositories
 from archimaid.domain.entities import Application, Team
-from archimaid.domain.errors import AlreadyExists, NotFound, ReferenceInUse
+from archimaid.domain.errors import AlreadyExists, InvalidEntity, NotFound, ReferenceInUse
 from archimaid.domain.reference import AvailabilityLevel, FunctionCategory
 
 pytestmark = pytest.mark.postgres
@@ -104,3 +104,33 @@ def test_delete_value_in_use_is_blocked_and_value_stays(engine, catalog):
 def test_delete_unknown_code_is_not_found(catalog):
     with pytest.raises(NotFound):
         catalog.delete("function_category", "NOPE")
+
+
+def test_nul_character_in_code_or_label_is_an_invalid_entity(catalog):
+    # NUL passes the code format only via the label; build the code check separately
+    with pytest.raises(InvalidEntity):
+        catalog.create("function_category", FunctionCategory(code="NULL_LABEL", label="a\u0000"))
+    with pytest.raises(InvalidEntity):
+        catalog.update(
+            "function_category", "DATA", FunctionCategory(code="DATA", label="a\u0000")
+        )
+    assert catalog.get("function_category", "DATA").label == "Data"
+    assert not catalog.exists("function_category", "NULL_LABEL")
+
+
+def test_out_of_range_integer_is_an_invalid_entity(catalog):
+    with pytest.raises(InvalidEntity):
+        catalog.create(
+            "availability_level",
+            AvailabilityLevel(code="HUGE", label="Huge", rank=1, rpo_hours=2**40, rto_hours=0),
+        )
+    with pytest.raises(InvalidEntity):
+        catalog.update(
+            "availability_level", "LOW",
+            AvailabilityLevel(code="LOW", label="Low", rank=2**40, rpo_hours=1, rto_hours=1),
+        )
+
+
+def test_nul_character_in_a_delete_code_is_an_invalid_entity(catalog):
+    with pytest.raises(InvalidEntity):
+        catalog.delete("function_category", "A\u0000")

@@ -62,3 +62,31 @@ def test_scenario_over_real_postgres(client):
     assert client.delete(f"/applications/{app['id']}").status_code == 204
     assert client.get(f"/applications/{app['id']}/functions").status_code == 404
     assert client.delete(f"/teams/{team['id']}").status_code == 204
+
+
+def test_values_postgres_rejects_are_422_never_500(client):
+    assert client.post("/teams", json={"name": "x\u0000"}).status_code == 422
+    assert client.post(
+        "/reference/function_category", json={"code": "NUL", "label": "x\u0000"}
+    ).status_code == 422
+    assert client.post(
+        "/reference/integrity_level", json={"code": "BIG", "label": "B", "rank": 2**40}
+    ).status_code == 422
+    assert client.post(
+        "/reference/availability_level",
+        json={"code": "BIG", "label": "B", "rank": 1, "rpo_hours": 2**40, "rto_hours": 0},
+    ).status_code == 422
+    assert client.get("/teams").json() == []
+
+
+def test_blocked_delete_and_dangling_reference_bodies_have_no_postgres_text(client):
+    team = client.post("/teams", json={"name": "Payments"}).json()
+    client.post("/applications", json={"team_id": team["id"], "name": "Billing"})
+    blocked = client.delete(f"/teams/{team['id']}")
+    dangling = client.post(
+        "/applications",
+        json={"team_id": "00000000-0000-0000-0000-000000000000", "name": "X"},
+    )
+    assert (blocked.status_code, dangling.status_code) == (409, 422)
+    for response in (blocked, dangling):
+        assert not any(w in response.text for w in ("violates", "constraint", "_fkey"))

@@ -3,11 +3,13 @@ from typing import Any
 
 from fastapi import APIRouter, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from archimaid.application.reference_admin import ReferenceAdminService
 from archimaid.domain.errors import NotFound
 from archimaid.domain.reference import REFERENCE_KINDS, AvailabilityLevel, RankedValue
+
+INT32_MAX = 2**31 - 1
 
 
 class ReferenceIn(BaseModel):
@@ -19,12 +21,12 @@ class ReferenceIn(BaseModel):
 
 
 class RankedReferenceIn(ReferenceIn):
-    rank: int
+    rank: int = Field(ge=-(2**31), le=INT32_MAX)
 
 
 class AvailabilityReferenceIn(RankedReferenceIn):
-    rpo_hours: int
-    rto_hours: int
+    rpo_hours: int = Field(ge=0, le=INT32_MAX)
+    rto_hours: int = Field(ge=0, le=INT32_MAX)
 
 
 def _model_for(kind: str) -> type[BaseModel]:

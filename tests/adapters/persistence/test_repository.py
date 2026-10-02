@@ -14,7 +14,7 @@ from archimaid.domain.entities import (
     TeamMember,
     Technology,
 )
-from archimaid.domain.errors import DanglingReference, ReferenceInUse
+from archimaid.domain.errors import DanglingReference, InvalidEntity, ReferenceInUse
 
 pytestmark = pytest.mark.postgres
 
@@ -207,3 +207,52 @@ def test_delete_persona_used_by_function_is_blocked(repos):  # Review Focus test
     )
     with pytest.raises(ReferenceInUse):
         repos.personas.delete(persona.id)
+
+
+RAW_POSTGRES_WORDS = ("violates", "constraint", "_fkey")
+
+
+def test_blocked_delete_message_is_built_from_domain_facts(repos):
+    team = add_team(repos)
+    add_app(repos, team)
+    with pytest.raises(ReferenceInUse) as blocked:
+        repos.teams.delete(team.id)
+    message = str(blocked.value)
+    assert "Team" in message and str(team.id) in message
+    assert not any(word in message for word in RAW_POSTGRES_WORDS)
+
+
+def test_blocked_delete_of_data_type_does_not_name_another_table(repos):
+    team = add_team(repos)
+    app = add_app(repos, team)
+    data_type = DataType(application_id=app.id, name="Invoice", **meta())
+    repos.data_types.add(data_type)
+    repos.data_flows.add(
+        DataFlow(
+            source_application_id=app.id, target_application_id=app.id,
+            data_type_id=data_type.id, **meta(),
+        )
+    )
+    with pytest.raises(ReferenceInUse) as blocked:
+        repos.applications.delete(app.id)
+    message = str(blocked.value)
+    assert "Application" in message and "data_type" not in message
+    assert not any(word in message for word in RAW_POSTGRES_WORDS)
+
+
+def test_dangling_reference_message_is_built_from_domain_facts(repos):
+    with pytest.raises(DanglingReference) as dangling:
+        repos.applications.add(Application(team_id=uuid4(), name="X", **meta()))
+    message = str(dangling.value)
+    assert "Application" in message
+    assert not any(word in message for word in RAW_POSTGRES_WORDS)
+
+
+def test_nul_character_is_an_invalid_entity_on_add_and_update(repos):
+    with pytest.raises(InvalidEntity) as invalid:
+        repos.teams.add(Team(name="x\u0000", **meta()))
+    assert "NUL" not in str(invalid.value) and "cannot contain" not in str(invalid.value)
+    team = add_team(repos)
+    team.name = "y\u0000"
+    with pytest.raises(InvalidEntity):
+        repos.teams.update(team)

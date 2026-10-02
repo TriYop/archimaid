@@ -270,3 +270,19 @@ def test_reference_delete_in_use_is_409(client, catalog):
 def test_reference_update_of_unknown_code_is_404(client):
     response = client.put("/reference/usage_mode/NOPE", json={"code": "NOPE", "label": "x"})
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("kind", "body"),
+    [
+        ("integrity_level", {"code": "T", "label": "T", "rank": 2**40}),
+        ("integrity_level", {"code": "T", "label": "T", "rank": -(2**40)}),
+        ("availability_level",
+         {"code": "T", "label": "T", "rank": 1, "rpo_hours": 2**40, "rto_hours": 0}),
+        ("availability_level",
+         {"code": "T", "label": "T", "rank": 1, "rpo_hours": 0, "rto_hours": 2**40}),
+    ],
+)
+def test_reference_out_of_range_integers_are_422(client, kind, body):
+    assert client.post(f"/reference/{kind}", json=body).status_code == 422
+    assert client.put(f"/reference/{kind}/LOW", json=body).status_code == 422
