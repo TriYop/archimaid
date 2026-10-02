@@ -1,0 +1,224 @@
+@startuml
+
+package "Value Objects" <<node>> {
+    enum AvailabilityLevel{
+     EXTREME
+     SERIOUS
+     MODERATE
+     LOW
+    }
+
+    enum IntegrityLevel{
+     EXTREME
+     SERIOUS
+     MODERATE
+     LOW
+    }
+
+    enum ConfidentialityLevel{
+     EXTREME
+     SERIOUS
+     MODERATE
+     LOW
+    }
+
+    enum TraceabilityLevel{
+     EXTREME
+     SERIOUS
+     MODERATE
+     LOW
+    }
+
+    enum FunctionCategory{
+     COMMON
+     BUSINESS
+     EXCHANGE
+     DATA
+    }
+
+    enum UsageMode {
+        SOURCE
+        CONSUMER
+        PROXY
+    }
+
+    enum TechnologyType {
+     OPERATING_SYSTEM
+     FRAMEWORK_LIBRARY
+     WEB_SERVER
+     APPLICATION_SERVER
+        DATABASE
+        SOFTWARE
+        SAAS_SERVICE
+        RUNTIME_INTERPRETER
+        CI_CD
+        DEV_LANG
+        ETL
+    }
+
+    enum TechStandardStatus {
+        EMERGING
+        UPCOMING
+        REFERENCE
+        CONFINED
+        TO_BE_PHASED_OUT
+        DECOMMISSIONED
+        REJECTED
+    }
+
+}
+
+package "Aggregate: Team" <<aggregate>> {
+    class Team {
+        -TeamId: UUID
+        -Name: String
+        -Description: String
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class TeamMember {
+        -TeamMemberId: UUID
+        -TeamId: UUID
+        -UserId: string
+        -Name: String
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+}
+
+package "Aggregate: Application" <<aggregate>> {
+    class Application {
+        -ApplicationId: UUID
+        -TeamId: UUID
+        -GoldenAppId: String | null
+        -auid: String | null
+        -Name: String
+        -Description: String | null
+        -asset_cmdb: String | null
+        -shortname: String | null
+        -Owner_uid: String | null
+        -confidentiality_level: ConfidentialityLevel | null
+        -integrity_level: IntegrityLevel | null
+        -availability_level: AvailabilityLevel | null
+        -traceability_level: TraceabilityLevel | null 
+        <<extracted>>
+        #RPO: int | null
+        #RTO: int | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class Function {
+        -FunctionId: UUID
+        -ApplicationId: UUID
+        -Name: String
+        -Description: String | null
+        -Category: FunctionCategory | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class DataType {
+        -DataTypeId: UUID
+        -ApplicationId: UUID
+        -Name: String
+        -Definition: String | null
+        -Specificity: String | null
+        -ConfidentialityLevel: ConfidentialityLevel | null
+        -GoldenSource: String | null
+        -goldenReplica: String | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class DataFlow {
+        -DataFlowId: UUID
+        -SourceApplicationId: UUID
+        -TargetApplicationId: UUID
+        -DataTypeId: UUID
+        -UsageMode: UsageMode | null
+        -UsageExplanation: String | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class Technology {
+        -TechnologyId: UUID
+        -ApplicationId: UUID
+        -Name: String
+        -Version: String | null
+        -Family: String | null        
+        -Type: TechnologyType | null
+        <<extracted>>
+        #StandardStatus: TechStandardStatus | null
+        #StandardStatusDetails: String | null
+        -TechStandardsLink: String | null
+        #ActionPlan: String | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+    }
+
+    class Persona {
+        -PersonaId: UUID
+        -Name: String
+        -Description: String | null
+        -Category: String | null
+        -created_at: DateTime
+        -updated_at: DateTime
+        +validate(): Boolean
+
+    }
+}
+
+
+' note bottomright
+'     "<b>RTO/RPO Mapping:</b>
+'     LOW -> RPO=72h, RTO=24h
+'     MODERATE -> RPO=24h, RTO=24h
+'     SERIOUS -> RPO=4h, RTO=0h
+'     EXTREME -> RPO=2h, RTO=0h
+
+'     <b>Implementation:</b>RPO/RTO are property values computed at read time 
+'     via compute_rpo_rto(availability_level). 
+'     They are not stored ; no constructor parameter. 
+'     Single source of truth is the availability_level property."
+' end note
+
+Team"1" -- "*" Application : owns
+Team "1" -- "*" TeamMember : Contains
+Team "1" -- "*" Application : same team
+
+Application "1" -- "*" Function : has
+Application "1" -- "*" DataType : uses
+Application "1" -- "*" DataFlow : produces
+Application "1" -- "*" Technology : runs
+
+Persona "1" -- "*" Function : exercises
+
+DataFlow "*" -- "1" DataType : transfers
+DataFlow "1" -- "*" Application : references
+
+' -----------------------
+Application --> ConfidentialityLevel : confidentiality_level
+Application --> IntegrityLevel : integrity_level
+Application --> AvailabilityLevel : availability_level
+Application --> TraceabilityLevel : traceability_level
+
+Function --> FunctionCategory : Category
+DataType --> ConfidentialityLevel : Confidentiality 
+DataType --> UsageMode : Usage mode
+Technology --> TechnologyType : Type
+Technology --> TechStandardStatus : StandardStatus
+
+
+
+@enduml
+
