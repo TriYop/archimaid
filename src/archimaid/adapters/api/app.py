@@ -8,6 +8,7 @@ from archimaid.adapters.api import schemas
 from archimaid.adapters.api.crud_router import crud_router
 from archimaid.adapters.api.errors import install_error_handlers
 from archimaid.adapters.api.reference_router import reference_router
+from archimaid.adapters.web.app import install_web
 from archimaid.application.crud import CrudService
 from archimaid.application.services import Services
 
@@ -91,4 +92,5 @@ def create_app(services: Services) -> FastAPI:
         tags=["personas"],
     )
     app.include_router(reference_router(services.reference))
+    install_web(app, services)
     return app

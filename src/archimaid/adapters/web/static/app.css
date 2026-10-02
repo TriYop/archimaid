@@ -1,0 +1,10 @@
+td.actions { white-space: nowrap; }
+td.actions button { margin: 0 0.25rem 0 0; padding: 0.25rem 0.6rem; width: auto; }
+article.error, .error { color: var(--pico-del-color); }
+article.error ul { margin: 0; padding-left: 1.2rem; }
+details.add { margin-bottom: 1rem; }
+details.add form { padding: 1rem 0; }
+tr.editing td { vertical-align: top; }
+tr.editing input, tr.editing select, tr.editing textarea { margin-bottom: 0; }
+nav.tabs ul { flex-wrap: wrap; }
+nav.tabs a[aria-current="page"] { font-weight: bold; }
