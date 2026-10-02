@@ -1,0 +1,17 @@
+{% from "_resource.html" import widget, errors %}
+<form hx-put="/ui/applications/{{ app.id }}/details" hx-target="#tab-panel" hx-swap="innerHTML">
+  {{ errors(messages) }}
+  {% if saved %}<p><ins>Saved.</ins></p>{% endif %}
+  {%- for f in APPLICATION.editable() %}
+  <label>{{ f.label }}{% if f.required %} *{% endif %}
+    {{ widget(f, values.get(f.name), lookups) }}
+  </label>
+  {%- endfor %}
+  <p><strong>RPO / RTO:</strong> {{ lookups.display(APPLICATION.field("rpo_rto"), app_values) }}</p>
+  <button type="submit">Save</button>
+</form>
+<hr>
+<button type="button" class="outline contrast"
+        hx-delete="/ui/applications/{{ app.id }}"
+        hx-confirm="{{ APPLICATION.confirm_delete() }}"
+        hx-swap="none">Delete application</button>

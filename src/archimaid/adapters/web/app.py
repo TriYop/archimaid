@@ -9,7 +9,16 @@ from fastapi.staticfiles import StaticFiles
 from archimaid.adapters.web.errors import UiError, ui_error_handler
 from archimaid.adapters.web.pages import pages_router
 from archimaid.adapters.web.resource_router import resource_router
-from archimaid.adapters.web.resources import APPLICATION, MEMBER, PERSONA, TEAM, Resource
+from archimaid.adapters.web.resources import (
+    APPLICATION,
+    DATA_TYPE,
+    FUNCTION,
+    MEMBER,
+    PERSONA,
+    TEAM,
+    TECHNOLOGY,
+    Resource,
+)
 from archimaid.application.services import Services
 from archimaid.domain.errors import NotFound
 
@@ -38,10 +47,20 @@ def install_web(app: FastAPI, services: Services) -> None:
             raise UiError(exc) from exc
         return team_id
 
+    def application_parent(application_id: UUID) -> UUID:
+        try:
+            services.applications.get(application_id)
+        except NotFound as exc:
+            raise UiError(exc) from exc
+        return application_id
+
     routed: list[tuple[Resource, Callable[..., UUID] | None]] = [
         (TEAM, None),
         (MEMBER, team_parent),
         (APPLICATION, None),
+        (FUNCTION, application_parent),
+        (DATA_TYPE, application_parent),
+        (TECHNOLOGY, application_parent),
         (PERSONA, None),
     ]
     for resource, parent in routed:

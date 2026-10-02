@@ -1,0 +1,12 @@
+<nav class="tabs">
+  <ul>
+    {%- for key, label in TABS %}
+    <li><a href="/ui/applications/{{ app.id }}?tab={{ key }}"
+           hx-get="/ui/applications/{{ app.id }}/tabs/{{ key }}"
+           hx-target="#tab-panel" hx-swap="innerHTML"
+           hx-push-url="/ui/applications/{{ app.id }}?tab={{ key }}"
+           {%- if key == tab %} aria-current="page"{% endif %}>{{ label }}</a></li>
+    {%- endfor %}
+  </ul>
+</nav>
+{% include "tabs/" ~ tab ~ ".html" %}

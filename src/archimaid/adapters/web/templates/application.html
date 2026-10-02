@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ app.name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/ui/teams">Teams</a></li>
+    <li><a href="/ui/teams/{{ team.id }}">{{ team.name }}</a></li>
+    <li>{{ app.name }}</li>
+  </ul>
+</nav>
+<h1>{{ app.name }}</h1>
+<div id="tab-panel">{% include "_tab_panel.html" %}</div>
+{% endblock %}
