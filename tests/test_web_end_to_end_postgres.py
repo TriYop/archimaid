@@ -98,7 +98,9 @@ def test_web_ui_scenario_over_real_postgres(client):
     )
     assert renamed.status_code == 200
     team_page = client.get(f"/ui/teams/{team}").text
-    assert "High" in team_page and "4 h / 0 h" in team_page
+    start = team_page.index(f'<tr id="application-{app_a}"')
+    app_row = team_page[start : team_page.index("</tr>", start)]
+    assert "High" in app_row and "4 h / 0 h" in app_row
     assert client.delete("/ui/reference/availability_level/HIGH", headers=hx).status_code == 409
 
     # deleting from the application's own page redirects to the team
