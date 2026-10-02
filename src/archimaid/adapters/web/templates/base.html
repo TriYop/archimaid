@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":false}]}'>
+  <title>{% block title %}Archimaid{% endblock %} · Archimaid</title>
+  <link rel="stylesheet" href="/ui/static/pico.min.css">
+  <link rel="stylesheet" href="/ui/static/app.css">
+  <script src="/ui/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul><li><strong>Archimaid</strong></li></ul>
+      <ul>
+        <li><a href="/ui/teams">Teams</a></li>
+        <li><a href="/ui/personas">Personas</a></li>
+        <li><a href="/ui/data-flows">Data flows</a></li>
+        <li><a href="/ui/reference">Reference data</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <div id="flash" aria-live="polite"></div>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+{% macro errors(messages) -%}
+{%- if messages %}<article class="error" role="alert"><ul>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul></article>{% endif -%}
+{%- endmacro %}
+
+{% macro widget(field, value, lookups) -%}
+{%- set shown = '' if value is none else value -%}
+{%- if field.widget == 'textarea' -%}
+<textarea name="{{ field.name }}" aria-label="{{ field.label }}" rows="2"{% if field.required %} required{% endif %}>{{ shown }}</textarea>
+{%- elif field.widget == 'number' -%}
+<input type="number" step="1" name="{{ field.name }}" aria-label="{{ field.label }}" value="{{ shown }}"{% if field.required %} required{% endif %}>
+{%- elif field.widget in ('select_ref', 'select_entity') -%}
+<select name="{{ field.name }}" aria-label="{{ field.label }}"{% if field.required %} required{% endif %}>
+  {%- if not field.required %}<option value="">—</option>{% endif %}
+  {%- for group, options in lookups.choices(field) %}
+    {%- if group %}<optgroup label="{{ group }}">{% endif %}
+    {%- for opt in options %}<option value="{{ opt.value }}"{% if opt.value == shown|string %} selected{% endif %}>{{ opt.label }}</option>{% endfor %}
+    {%- if group %}</optgroup>{% endif %}
+  {%- endfor %}
+</select>
+{%- else -%}
+<input type="text" name="{{ field.name }}" aria-label="{{ field.label }}" value="{{ shown }}"{% if field.required %} required{% endif %}>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro row(resource, values, lookups, ctx) -%}
+{%- set item_id = values['id'] -%}
+{%- set url = resource.url(ctx) -%}
+<tr id="{{ resource.slug }}-{{ item_id }}">
+  {%- for f in resource.columns() %}
+  <td>{% if loop.first and resource.page %}<a href="{{ resource.page.format(id=item_id) }}">{{ lookups.display(f, values) }}</a>{% else %}{{ lookups.display(f, values) }}{% endif %}</td>
+  {%- endfor %}
+  <td class="actions">
+    <button type="button" class="outline secondary" hx-get="{{ url }}/{{ item_id }}/edit" hx-target="closest tr" hx-swap="outerHTML">Edit</button>
+    <button type="button" class="outline contrast" hx-delete="{{ url }}/{{ item_id }}" hx-confirm="{{ resource.confirm_delete() }}" hx-target="closest tr" hx-swap="outerHTML">Delete</button>
+  </td>
+</tr>
+{%- endmacro %}
+
+{% macro edit_row(resource, values, lookups, ctx, messages) -%}
+{%- set item_id = values['id'] -%}
+{%- set url = resource.url(ctx) -%}
+{%- set editable = resource.form() | map(attribute='name') | list -%}
+<tr id="{{ resource.slug }}-{{ item_id }}" class="editing">
+  {%- for f in resource.columns() %}
+  <td>
+    {%- if loop.first %}{{ errors(messages) }}{% endif -%}
+    {%- if f.name in editable %}{{ widget(f, values.get(f.name), lookups) }}{% else %}{{ lookups.display(f, values) }}{% endif -%}
+  </td>
+  {%- endfor %}
+  <td class="actions">
+    <button type="button" hx-put="{{ url }}/{{ item_id }}" hx-include="closest tr" hx-target="closest tr" hx-swap="outerHTML">Save</button>
+    <button type="button" class="outline secondary" hx-get="{{ url }}/{{ item_id }}/row" hx-target="closest tr" hx-swap="outerHTML">Cancel</button>
+  </td>
+</tr>
+{%- endmacro %}
+
+{% macro add_form(resource, lookups, ctx, table_id, fixed) -%}
+<details class="add">
+  <summary role="button" class="outline">Add {{ resource.title | lower }}</summary>
+  <form hx-post="{{ resource.url(ctx) }}?table={{ table_id }}" hx-target="#rows-{{ table_id }}" hx-swap="afterbegin" hx-on::after-request="if (event.detail.successful) this.reset()">
+    <div id="add-errors-{{ table_id }}"></div>
+    {%- for f in resource.form() if f.name not in fixed %}
+    <label>{{ f.label }}{% if f.required %} *{% endif %}
+      {{ widget(f, none, lookups) }}
+    </label>
+    {%- endfor %}
+    {%- for name, value in fixed.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {%- endfor %}
+    <button type="submit">Add</button>
+  </form>
+</details>
+{%- endmacro %}
+
+{% macro table(resource, rows, lookups, ctx, table_id, fixed={}, add=True) -%}
+{% if add %}{{ add_form(resource, lookups, ctx, table_id, fixed) }}{% endif %}
+<figure>
+  <table>
+    <thead><tr>{% for f in resource.columns() %}<th scope="col">{{ f.label }}</th>{% endfor %}<th scope="col"></th></tr></thead>
+    <tbody id="rows-{{ table_id }}">
+      {%- for values in rows %}
+      {{ row(resource, values, lookups, ctx) }}
+      {%- endfor %}
+    </tbody>
+  </table>
+</figure>
+{%- endmacro %}

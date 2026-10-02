@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% from "_resource.html" import table %}
+{% block title %}Personas{% endblock %}
+{% block content %}
+<h1>Personas</h1>
+{{ table(PERSONA, rows, lookups, {}, "personas") }}
+{% endblock %}

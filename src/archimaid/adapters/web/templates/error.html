@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<h1>{{ code }}</h1>
+<article class="error" role="alert">{{ message }}</article>
+<p><a href="/ui/teams">Back to teams</a></p>
+{% endblock %}
