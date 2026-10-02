@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from archimaid.adapters.web.errors import UiError, inline_problem
 from archimaid.adapters.web.forms import form_data, parse_form
 from archimaid.adapters.web.render import Lookups, present_rows, render
-from archimaid.adapters.web.resources import APPLICATION, TABS
+from archimaid.adapters.web.resources import APPLICATION, DATA_FLOW, TABS
 from archimaid.application.services import Services
 from archimaid.domain.errors import DomainError, NotFound
 
@@ -115,5 +115,25 @@ def pages_router(services: Services) -> APIRouter:
         else:
             context.update(saved=True)
         return render(request, "_tab_panel.html", status_code=status, **context)
+
+    @router.get("/ui/data-flows")
+    def data_flows_page(request: Request):
+        lookups = Lookups(services)
+        apps = {a.id: a.name for a in services.applications.list()}
+        usage = DATA_FLOW.field("usage_mode")
+        flows = [
+            {
+                "id": f.id,
+                "source_id": f.source_application_id,
+                "source_name": apps.get(f.source_application_id, "?"),
+                "target_id": f.target_application_id,
+                "target_name": apps.get(f.target_application_id, "?"),
+                "data_type": lookups.display(DATA_FLOW.field("data_type_id"), vars(f)),
+                "usage_mode": lookups.display(usage, vars(f)),
+                "explanation": f.usage_explanation or "—",
+            }
+            for f in services.data_flows.list()
+        ]
+        return render(request, "data_flows.html", flows=flows)
 
     return router

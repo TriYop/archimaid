@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Data flows{% endblock %}
+{% block content %}
+<h1>Data flows</h1>
+<p><small>Read-only overview. Flows are added and edited on each application's "Data flows" tab.</small></p>
+<figure>
+  <table>
+    <thead><tr><th>Source</th><th>Target</th><th>Data type</th><th>Usage mode</th><th>Explanation</th></tr></thead>
+    <tbody>
+      {%- for f in flows %}
+      <tr>
+        <td><a href="/ui/applications/{{ f.source_id }}">{{ f.source_name }}</a></td>
+        <td><a href="/ui/applications/{{ f.target_id }}">{{ f.target_name }}</a></td>
+        <td>{{ f.data_type }}</td>
+        <td>{{ f.usage_mode }}</td>
+        <td>{{ f.explanation }}</td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+</figure>
+{% endblock %}

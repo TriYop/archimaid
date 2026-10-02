@@ -1,1 +1,7 @@
-<p>Data flows are added in the next step.</p>
+{% from "_resource.html" import table %}
+<h3>Outgoing</h3>
+<p><small>This application is the source.</small></p>
+{{ table(DATA_FLOW, outgoing_rows, lookups, {}, "outgoing", {"source_application_id": app.id}) }}
+<h3>Incoming</h3>
+<p><small>This application is the target.</small></p>
+{{ table(DATA_FLOW, incoming_rows, lookups, {}, "incoming", {"target_application_id": app.id}) }}

@@ -11,6 +11,7 @@ from archimaid.adapters.web.pages import pages_router
 from archimaid.adapters.web.resource_router import resource_router
 from archimaid.adapters.web.resources import (
     APPLICATION,
+    DATA_FLOW,
     DATA_TYPE,
     FUNCTION,
     MEMBER,
@@ -61,6 +62,7 @@ def install_web(app: FastAPI, services: Services) -> None:
         (FUNCTION, application_parent),
         (DATA_TYPE, application_parent),
         (TECHNOLOGY, application_parent),
+        (DATA_FLOW, None),
         (PERSONA, None),
     ]
     for resource, parent in routed:
