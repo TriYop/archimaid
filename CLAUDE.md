@@ -38,7 +38,7 @@ Hexagonal. Dependencies point inward: `adapters` → `application` → `ports`/`
 
 Key design rules:
 
-- **Value objects are configuration tables, not enums.** There are eight catalog tables, keyed by their text `code`. Entities store the code, and FKs are `ON UPDATE CASCADE ON DELETE RESTRICT`. Adding a new catalog means adding a VO in `domain/reference.py` and its `REFERENCE_KINDS` entry, a migration, and a field entry in `build_services()`.
+- **Value objects are configuration tables, not enums.** There are eight catalog tables, keyed by their text `code`, which must match `[A-Z0-9_]+` (enforced in `ReferenceValue`). Entities store the code, and FKs are `ON UPDATE CASCADE ON DELETE RESTRICT`. Adding a new catalog means adding a VO in `domain/reference.py` and its `REFERENCE_KINDS` entry, a migration, and a field entry in `build_services()`.
 - **RPO/RTO are derived.** They are read from the `availability_level` row when an application is presented. They are never stored or accepted as input.
 - **Delete semantics.** Children cascade with their parent (members, functions, data types, technologies). Cross-aggregate references are `RESTRICT` and return 409.
 - **Errors.** `NotFound` → 404, `InvalidEntity` / `InvalidReferenceCode` / `DanglingReference` → 422, `ReferenceInUse` / `AlreadyExists` → 409.

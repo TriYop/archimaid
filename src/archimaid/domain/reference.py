@@ -1,6 +1,9 @@
+import re
 from dataclasses import dataclass
 
 from archimaid.domain.errors import InvalidEntity
+
+CODE_PATTERN = re.compile(r"[A-Z0-9_]+")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -10,8 +13,8 @@ class ReferenceValue:
     description: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.code.strip():
-            raise InvalidEntity("code must not be blank")
+        if not CODE_PATTERN.fullmatch(self.code):
+            raise InvalidEntity("code must contain only A-Z, 0-9 and underscore")
         if not self.label.strip():
             raise InvalidEntity("label must not be blank")
 

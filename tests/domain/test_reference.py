@@ -48,3 +48,14 @@ def test_levels_carry_a_rank():
 def test_availability_hours_cannot_be_negative():
     with pytest.raises(InvalidEntity):
         AvailabilityLevel(code="LOW", label="Low", rank=1, rpo_hours=-1, rto_hours=0)
+
+
+@pytest.mark.parametrize("code", ["A/B", "A B", "lower", " PAD ", "PAD\n", "A-B", "É"])
+def test_code_outside_the_format_is_rejected(code):
+    with pytest.raises(InvalidEntity, match="code must contain only"):
+        FunctionCategory(code=code, label="x")
+
+
+@pytest.mark.parametrize("code", ["CI_CD", "A1_B2", "X"])
+def test_code_inside_the_format_is_accepted(code):
+    assert FunctionCategory(code=code, label="x").code == code

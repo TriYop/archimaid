@@ -286,3 +286,13 @@ def test_reference_update_of_unknown_code_is_404(client):
 def test_reference_out_of_range_integers_are_422(client, kind, body):
     assert client.post(f"/reference/{kind}", json=body).status_code == 422
     assert client.put(f"/reference/{kind}/LOW", json=body).status_code == 422
+
+
+@pytest.mark.parametrize("code", ["A/B", " PAD ", "lower"])
+def test_reference_code_with_a_bad_format_is_422_and_not_stored(client, code):
+    before = client.get("/reference/usage_mode").json()
+    response = client.post("/reference/usage_mode", json={"code": code, "label": "x"})
+    assert response.status_code == 422
+    assert client.get("/reference/usage_mode").json() == before
+    put = client.put("/reference/usage_mode/PROXY", json={"code": code, "label": "x"})
+    assert put.status_code == 422
