@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from archimaid.adapters.web.errors import UiError, ui_error_handler
 from archimaid.adapters.web.pages import pages_router
+from archimaid.adapters.web.reference import reference_router
 from archimaid.adapters.web.resource_router import resource_router
 from archimaid.adapters.web.resources import (
     APPLICATION,
@@ -40,6 +41,7 @@ def install_web(app: FastAPI, services: Services) -> None:
         return RedirectResponse("/ui/teams")
 
     app.include_router(pages_router(services), include_in_schema=False)
+    app.include_router(reference_router(services), include_in_schema=False)
 
     def team_parent(team_id: UUID) -> UUID:
         try:

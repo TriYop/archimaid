@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Reference data{% endblock %}
+{% block content %}
+<h1>Reference data</h1>
+<p><small>Configuration tables behind the dropdowns. Changes apply everywhere immediately.</small></p>
+<ul>
+  {%- for kind, title, count in kinds %}
+  <li><a href="/ui/reference/{{ kind }}">{{ title }}</a> ({{ count }})</li>
+  {%- endfor %}
+</ul>
+{% endblock %}

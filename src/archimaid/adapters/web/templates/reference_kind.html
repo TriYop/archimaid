@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_resource.html" import table %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul><li><a href="/ui/reference">Reference data</a></li><li>{{ title }}</li></ul>
+</nav>
+<h1>{{ title }}</h1>
+<p><small>Changing a code renames it everywhere it is used. A value that is still referenced cannot be deleted. Codes use A-Z, 0-9 and underscore.</small></p>
+{{ table(resource, rows, lookups, {}, "reference") }}
+{% endblock %}
