@@ -1,7 +1,13 @@
 import pytest
 
 from archimaid.adapters.web.diagram.files import filename_slug
-from archimaid.adapters.web.diagram.text import clean, escape, text_width, truncate
+from archimaid.adapters.web.diagram.text import (
+    clean,
+    display_len,
+    escape,
+    text_width,
+    truncate,
+)
 
 
 def test_clean_removes_characters_xml_forbids_and_keeps_the_allowed_ones():
@@ -50,3 +56,18 @@ def test_filename_slug_is_safe_ascii(name, slug):
     # Review Focus test (4)
     assert filename_slug(name) == slug
     assert all(c.isascii() and (c.isalnum() or c == "-") for c in filename_slug(name))
+
+
+def test_display_len_counts_full_width_characters_twice():
+    assert display_len("abc日本") == 7
+
+
+def test_truncate_respects_display_width_for_cjk():
+    out = truncate("日本語日本語日本語日本語", 9)
+    assert display_len(out) <= 9 and out.endswith("…")
+    assert out == "日本語日…"
+    assert truncate("x", 0) is not None
+
+
+def test_text_width_counts_cjk_double():
+    assert text_width("日本", 10) == pytest.approx(4 * 10 * 0.56)

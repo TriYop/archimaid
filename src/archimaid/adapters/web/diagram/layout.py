@@ -115,7 +115,7 @@ def _label(
     k: int,
     n: int,
     at: float,
-    canvas_w: float = 0,
+    canvas_w: float,
 ) -> Label:
     """A label beside the line at fraction `at` from (x1, y1); parallel lines alternate sides."""
     shown = truncate(text, 24)
@@ -124,8 +124,7 @@ def _label(
     my += (k // 2) * 16  # the third and later parallel labels are staggered
     left_of_line = n > 1 and k % 2 == 0
     x = mx - 5 - width if left_of_line else mx + 5
-    # Clamp label x into the canvas
-    x = _clamp(x, 4, canvas_w - width - 4) if canvas_w > 0 else x
+    x = _clamp(x, 4, canvas_w - width - 4)  # keep the label inside the canvas
     return Label(shown, x, my, width)
 
 
@@ -215,6 +214,15 @@ def compute_layout(model: DiagramModel) -> Layout:
         shift = sum(desired[p] - (per_x[p] + per_w[p] / 2) for p in personas) / len(personas)
         for p in personas:
             per_x[p] += shift
+        # the whole row stays inside the canvas (its width is part of canvas_w)
+        right = max(per_x[p] + per_w[p] for p in personas)
+        if right > canvas_w - MARGIN:
+            for p in personas:
+                per_x[p] -= right - (canvas_w - MARGIN)
+        left_edge = min(per_x.values())
+        if left_edge < MARGIN:
+            for p in personas:
+                per_x[p] += MARGIN - left_edge
 
     arrows: list[Arrow] = []
 

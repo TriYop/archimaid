@@ -6,6 +6,7 @@ from archimaid.adapters.web.diagram.layout import (
     compute_layout,
 )
 from archimaid.adapters.web.diagram.model import DiagramFunction, DiagramModel
+from archimaid.adapters.web.diagram.text import display_len, text_width, truncate
 from tests.adapters.web.diagram.samples import EMPTY, FULL, HOSTILE, SMALL, flow, neighbour
 
 EPS = 0.01
@@ -279,3 +280,38 @@ def test_persona_fan_out_starts_inside_the_persona_box():
         assert p.x <= arrow.x1 <= p.x + p.w, (
             f"Persona arrow x1={arrow.x1} outside box [{p.x}, {p.x + p.w}]"
         )
+
+
+def _persona_row_fits(layout):
+    for p in layout.personas:
+        assert p.x >= 0 and p.x + p.w <= layout.width
+    ordered = sorted(layout.personas, key=lambda p: p.x)
+    for a, b in zip(ordered, ordered[1:], strict=False):
+        assert b.x - (a.x + a.w) >= GAP - EPS
+
+
+def test_personas_on_the_rightmost_functions_stay_inside_the_canvas():
+    names = ["P6", "P7", "P8", "A very long persona name xx"]
+    functions = tuple(
+        DiagramFunction(f"Function {i}", names[i - 6] if i >= 6 else None) for i in range(10)
+    )
+    _persona_row_fits(compute_layout(DiagramModel(application="App", functions=functions)))
+
+
+def test_personas_on_the_leftmost_functions_stay_inside_the_canvas():
+    names = ["A very long persona name xx", "P1", "P2", "P3"]
+    functions = tuple(
+        DiagramFunction(f"Function {i}", names[i] if i < 4 else None) for i in range(10)
+    )
+    _persona_row_fits(compute_layout(DiagramModel(application="App", functions=functions)))
+
+
+def test_cjk_neighbour_names_get_a_box_sized_for_their_display_width():
+    name = "日本語" * 7 + "日本"  # 20 characters, 40 display columns
+    layout = compute_layout(
+        DiagramModel(application="App", targets=(neighbour(name, flow("Invoice")),))
+    )
+    box = layout.targets[0]
+    shown = truncate(name, 28)
+    assert display_len(shown) <= 28
+    assert box.w >= min(240, text_width(shown) + 32) - EPS
