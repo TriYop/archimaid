@@ -154,11 +154,16 @@ def test_the_same_error_without_htmx_is_a_full_error_page(client):
 
 
 def test_persona_add_edit_save_delete(client, services):
-    added = client.post("/ui/personas?table=personas", data={"name": "Accountant", "category": "finance"})
+    added = client.post(
+        "/ui/personas?table=personas", data={"name": "Accountant", "category": "finance"}
+    )
     assert added.status_code == 201
     persona = services.personas.list()[0]
     assert persona.category == "finance"
-    saved = client.put(f"/ui/personas/{persona.id}", data={"name": "Auditor", "description": "", "category": ""})
+    saved = client.put(
+        f"/ui/personas/{persona.id}",
+        data={"name": "Auditor", "description": "", "category": ""},
+    )
     assert saved.status_code == 200
     assert services.personas.get(persona.id).category is None
     assert client.delete(f"/ui/personas/{persona.id}").status_code == 200

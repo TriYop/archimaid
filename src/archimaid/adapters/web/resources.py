@@ -185,8 +185,20 @@ DATA_FLOW = Resource(
     base="/ui/data-flows",
     service_name="data_flows",
     fields=(
-        Field("source_application_id", "Source application", "select_entity", required=True, source="applications"),
-        Field("target_application_id", "Target application", "select_entity", required=True, source="applications"),
+        Field(
+            "source_application_id",
+            "Source application",
+            "select_entity",
+            required=True,
+            source="applications",
+        ),
+        Field(
+            "target_application_id",
+            "Target application",
+            "select_entity",
+            required=True,
+            source="applications",
+        ),
         Field("data_type_id", "Data type", "select_entity", required=True, source="data_types"),
         Field("usage_mode", "Usage mode", "select_ref", kind="usage_mode"),
         Field("usage_explanation", "Usage explanation"),

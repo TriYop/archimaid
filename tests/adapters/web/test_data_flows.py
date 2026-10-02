@@ -45,7 +45,9 @@ def test_add_forms_prefill_this_application_as_source_or_target(client, services
     assert f'name="target_application_id" value="{source.id}"' in html
 
 
-def test_other_application_options_are_grouped_by_team_and_data_types_by_application(client, services):
+def test_other_application_options_are_grouped_by_team_and_data_types_by_application(
+    client, services
+):
     source, target, _ = setup_two_apps(services)
     html = client.get(f"/ui/applications/{source.id}/tabs/data-flows").text
     assert '<optgroup label="Team A">' in html and '<optgroup label="Team B">' in html

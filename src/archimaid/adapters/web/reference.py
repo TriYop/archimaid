@@ -35,7 +35,13 @@ def reference_router(services: Services) -> APIRouter:
         except NotFound as exc:
             raise UiError(exc) from exc
 
-    def row_page(request: Request, template: str, resource: Resource, values: dict[str, Any], **extra: Any):
+    def row_page(
+        request: Request,
+        template: str,
+        resource: Resource,
+        values: dict[str, Any],
+        **extra: Any,
+    ):
         return render(
             request, template, resource=resource, values=values, ctx={},
             lookups=Lookups(services), **extra,
@@ -43,7 +49,10 @@ def reference_router(services: Services) -> APIRouter:
 
     @router.get("/ui/reference")
     def index(request: Request):
-        kinds = [(kind, _title(kind), len(services.reference.list(kind))) for kind in services.reference.kinds()]
+        kinds = [
+            (kind, _title(kind), len(services.reference.list(kind)))
+            for kind in services.reference.kinds()
+        ]
         return render(request, "reference_index.html", kinds=kinds)
 
     @router.get("/ui/reference/{kind}")
@@ -72,7 +81,14 @@ def reference_router(services: Services) -> APIRouter:
             except DomainError as exc:
                 problems, status = inline_problem(exc)
             else:
-                return row_page(request, "_row_added.html", resource, view(value), status_code=201, table_id=table_id)
+                return row_page(
+                    request,
+                    "_row_added.html",
+                    resource,
+                    view(value),
+                    status_code=201,
+                    table_id=table_id,
+                )
         return render(
             request, "_add_errors.html", status_code=status,
             headers={"HX-Retarget": f"#add-errors-{table_id}", "HX-Reswap": "innerHTML"},
@@ -103,7 +119,9 @@ def reference_router(services: Services) -> APIRouter:
             else:
                 return row_page(request, "_row.html", resource, view(value))
         values = {**view(existing_value), **form, "id": code}
-        return row_page(request, "_edit_row.html", resource, values, status_code=status, messages=problems)
+        return row_page(
+            request, "_edit_row.html", resource, values, status_code=status, messages=problems
+        )
 
     @router.delete("/ui/reference/{kind}/{code}")
     def delete(kind: str, code: str):

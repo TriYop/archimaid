@@ -107,14 +107,18 @@ def test_edit_row_and_save(client, catalog):
 
 def test_rename_changes_the_row_id_and_the_stored_code(client, catalog):
     # Review Focus test (5)
-    client.post("/ui/reference/function_category?table=reference", data={"code": "EXTRA", "label": "Extra"})
+    client.post(
+        "/ui/reference/function_category?table=reference",
+        data={"code": "EXTRA", "label": "Extra"},
+    )
     response = client.put(
         "/ui/reference/function_category/EXTRA",
         data={"code": "EXTRA2", "label": "Extra", "description": ""},
     )
     assert response.status_code == 200
     assert '<tr id="ref-function_category-EXTRA2"' in response.text
-    assert catalog.exists("function_category", "EXTRA2") and not catalog.exists("function_category", "EXTRA")
+    assert catalog.exists("function_category", "EXTRA2")
+    assert not catalog.exists("function_category", "EXTRA")
 
 
 def test_rename_onto_an_existing_code_is_409_and_keeps_the_edit_row(client, catalog):
@@ -140,7 +144,10 @@ def test_save_with_a_bad_code_or_number_is_422(client, catalog):
 
 
 def test_delete_a_value_and_a_blocked_delete(client, catalog, hx):
-    client.post("/ui/reference/function_category?table=reference", data={"code": "EXTRA", "label": "Extra"})
+    client.post(
+        "/ui/reference/function_category?table=reference",
+        data={"code": "EXTRA", "label": "Extra"},
+    )
     ok = client.delete("/ui/reference/function_category/EXTRA")
     assert ok.status_code == 200 and ok.text == ""
     assert not catalog.exists("function_category", "EXTRA")

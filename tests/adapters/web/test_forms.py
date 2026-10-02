@@ -47,7 +47,10 @@ def test_select_entity_parses_uuids():
     assert parse_form({"persona_id": ""}, [field]) == ({"persona_id": None}, [])
     _, problems = parse_form({"persona_id": "nope"}, [field])
     assert problems == ["Persona_Id: is not a valid choice"]
-    _, required = parse_form({"persona_id": ""}, [f("persona_id", "select_entity", source="personas", required=True)])
+    _, required = parse_form(
+        {"persona_id": ""},
+        [f("persona_id", "select_entity", source="personas", required=True)],
+    )
     assert required == ["Persona_Id: is required"]
 
 
