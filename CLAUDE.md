@@ -20,6 +20,7 @@ podman run -d --name archimaid-db -e POSTGRES_USER=archimaid -e POSTGRES_PASSWOR
 export DATABASE_URL=postgresql+psycopg://archimaid:archimaid@localhost:55432/archimaid
 uv run python -m archimaid.adapters.persistence.migrate        # alembic upgrade head
 uv run uvicorn archimaid.main:build_app --factory --reload     # http://localhost:8000/docs
+# web UI: http://localhost:8000/ui/  (the JSON API's docs are at /docs)
 ```
 
 ## Test configuration
@@ -35,6 +36,7 @@ Hexagonal. Dependencies point inward: `adapters` → `application` → `ports`/`
 - `application/`: `CrudService` is generic. `build_services()` in `services.py` is where each entity's reference fields (field → catalog kind) and parent-id checks are declared. `ApplicationService` adds the derived `rpo`/`rto`. `ReferenceAdminService` maintains the catalogs.
 - `adapters/persistence/`: SQLAlchemy Core (sync) repositories, `PostgresReferenceCatalog`, and Alembic migrations in `migrations/versions/` (0001 schema, 0002 seed). `tables.py` must stay in sync with the migrations, and a test compares them.
 - `adapters/api/`: `crud_router()` builds the CRUD routes for any entity. Nested resources pass `parent_field` and `parent_dependency`. `reference_router` serves `/reference/{kind}`. `errors.py` maps domain errors to HTTP codes.
+- `adapters/web/`: the HTMX + Jinja2 UI under `/ui` (pages and inline editing; no Node/npm; assets vendored in `static/`, see `static/VENDORED.md`). It calls the application services directly. Entities are described as `Resource`/`Field` data in `resources.py`; `resource_router.py` and the macros in `templates/_resource.html` render and serve any of them. Page routes return full pages, row/tab/error routes return fragments; errors that a form cannot show in place go to the `#flash` area through `HX-Retarget` (see `errors.py`).
 
 Key design rules:
 
@@ -42,4 +44,5 @@ Key design rules:
 - **RPO/RTO are derived.** They are read from the `availability_level` row when an application is presented. They are never stored or accepted as input.
 - **Delete semantics.** Children cascade with their parent (members, functions, data types, technologies). Cross-aggregate references are `RESTRICT` and return 409.
 - **Errors.** `NotFound` → 404, `InvalidEntity` / `InvalidReferenceCode` / `DanglingReference` → 422, `ReferenceInUse` / `AlreadyExists` → 409.
+- **Web forms only send the fields they show.** `CrudService.update` replaces only the keys it receives, so a table row that hides fields never wipes them.
 - Unit tests use the in-memory fakes in `tests/fakes.py`. Adapter and end-to-end tests use a real Postgres through testcontainers (`tests/conftest.py`).
