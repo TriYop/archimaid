@@ -3,10 +3,16 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from archimaid.adapters.web.errors import UiError, ui_error_handler
+from archimaid.adapters.web.errors import (
+    UiError,
+    ui_error_handler,
+    ui_unhandled_error_handler,
+    ui_validation_error_handler,
+)
 from archimaid.adapters.web.pages import pages_router
 from archimaid.adapters.web.reference import reference_router
 from archimaid.adapters.web.resource_router import resource_router
@@ -31,6 +37,11 @@ def install_web(app: FastAPI, services: Services) -> None:
     """Mount the server-rendered web UI (HTMX + Jinja2) under /ui."""
     app.mount("/ui/static", StaticFiles(directory=str(STATIC_DIR)), name="ui-static")
     app.add_exception_handler(UiError, ui_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, ui_unhandled_error_handler)
+    app.add_exception_handler(
+        RequestValidationError,
+        ui_validation_error_handler,  # type: ignore[arg-type]
+    )
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:

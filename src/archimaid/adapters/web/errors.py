@@ -1,5 +1,9 @@
+import logging
+
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 
 from archimaid.adapters.web.render import render
 from archimaid.domain.errors import (
@@ -57,3 +61,30 @@ async def ui_error_handler(request: Request, exc: UiError) -> HTMLResponse:
             message=message,
         )
     return render(request, "error.html", status_code=status, message=message, code=status)
+
+
+def _generic_error(request: Request, status: int, message: str) -> HTMLResponse:
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "_flash.html",
+            status_code=status,
+            headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML"},
+            message=message,
+        )
+    return render(request, "error.html", status_code=status, message=message, code=status)
+
+
+async def ui_unhandled_error_handler(request: Request, exc: Exception) -> Response:
+    """Unexpected failures: never leak the exception text, never swap a row for a stack trace."""
+    logging.getLogger(__name__).exception("Unhandled error on %s", request.url.path, exc_info=exc)
+    if request.url.path.startswith("/ui"):
+        return _generic_error(request, 500, "Something went wrong. The action was not completed.")
+    return PlainTextResponse("Internal Server Error", status_code=500)
+
+
+async def ui_validation_error_handler(request: Request, exc: RequestValidationError) -> Response:
+    """Malformed /ui paths or forms render as a flash or page; the JSON API keeps FastAPI's 422."""
+    if request.url.path.startswith("/ui"):
+        return _generic_error(request, 422, "That address or form data is not valid.")
+    return await request_validation_exception_handler(request, exc)
