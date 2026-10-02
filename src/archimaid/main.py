@@ -11,6 +11,11 @@ from archimaid.application.services import build_services
 
 def build_app() -> FastAPI:
     """ASGI factory. Needs DATABASE_URL, e.g. postgresql+psycopg://user:pw@host/db."""
-    engine = create_engine(os.environ["DATABASE_URL"])
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL is not set, e.g. postgresql+psycopg://user:pw@host:5432/db"
+        )
+    engine = create_engine(url)
     services = build_services(build_repositories(engine), PostgresReferenceCatalog(engine))
     return create_app(services)
