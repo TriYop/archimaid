@@ -2,47 +2,44 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status
+Archimaid is a data-collection tool for functional, application and technical architecture analysis. A `Team` implements an `Application`. Architects use the tool to record the team's requirements and existing technology stack, to design the future stack. Spec: `docs/superpowers/specs/2026-10-02-archimaid-design.md`. Domain diagram: `domain.puml`. The spec wins where they differ.
 
-Archimaid is **spec-only**: the repo contains just `README.md` and `domain.puml`. There is no code, toolchain, build, lint or test setup yet, and it is not a git repository. Don't assume commands exist. When scaffolding, add the real ones to this file.
+## Commands
 
-Archimaid is a data-collection tool for functional, application and technical architecture analysis. A "Team" implements an "Application". The architects use the tool to gather the team's requirements and the existing technology stack, to design the future stack.
+```bash
+uv sync --dev
+uv run pytest                                   # all tests (Postgres tests need a container runtime)
+uv run pytest tests/application/test_crud_service.py::test_create_rejects_unknown_reference_code
+uv run pytest -m postgres                       # only the container/Postgres tests
+uv run ruff check src tests && uv run mypy src
 
-## Planned implementation (from README)
+# dev database (host port 55432, since 5432 is often taken)
+podman run -d --name archimaid-db -e POSTGRES_USER=archimaid -e POSTGRES_PASSWORD=archimaid \
+    -e POSTGRES_DB=archimaid -p 55432:5432 docker.io/library/postgres:16-alpine
+# or, where a compose provider is available: docker compose up -d db
+export DATABASE_URL=postgresql+psycopg://archimaid:archimaid@localhost:55432/archimaid
+uv run python -m archimaid.adapters.persistence.migrate        # alembic upgrade head
+uv run uvicorn archimaid.main:build_app --factory --reload     # http://localhost:8000/docs
+```
 
-- Light backend: Python + FastAPI + PostgreSQL.
-- The frontend is optional and should stay light.
-- Must follow DDD and hexagonal architecture (ports & adapters). Most of the work is CRUD on the domain aggregates.
+## Test configuration
 
-## Domain model (`domain.puml` is the source of truth)
+The Postgres tests start real `postgres:16-alpine` containers through testcontainers, so they need a container runtime reachable via `DOCKER_HOST`. Copy `.env.example` to `.env` (git-ignored, loaded by `tests/conftest.py`; real environment variables win), e.g. the rootless podman socket plus `TESTCONTAINERS_RYUK_DISABLED=true`.
 
-There are two aggregates, plus value-object enums.
+## Architecture
 
-- **Team aggregate**: `Team` owns `TeamMember`s.
-- **Application aggregate**: `Application` (belongs to a `Team` via `TeamId`) owns `Function`, `DataType`, `DataFlow` and `Technology`. `Persona` is also drawn in this package and has a 1-to-many "exercises" link to `Function`. It has no `ApplicationId`, so check whether it is global or per-application.
-- Every entity has a UUID id, `created_at` and `updated_at`, and a `validate(): Boolean` method.
-- `DataFlow` links a source `Application`, a target `Application` and a `DataType`. Its two application ids are `SourceApplicationId` and `TargetApplicationId`, so it crosses aggregate boundaries by id.
-- Value-object enums:
-  - Security levels: `Confidentiality`, `Integrity`, `Availability` and `Traceability` levels, each `EXTREME/SERIOUS/MODERATE/LOW`.
-  - `FunctionCategory`, `UsageMode`, `TechnologyType` and `TechStandardStatus`.
-- Most `Application`, `Function`, `DataType`, `DataFlow` and `Technology` attributes are nullable. Keep them optional in the API and schema.
+Hexagonal. Dependencies point inward: `adapters` → `application` → `ports`/`domain`. `src/archimaid/domain` imports no framework.
 
-### Derived and extracted fields
+- `domain/`: entity dataclasses (`validate()` returns True or raises `InvalidEntity`), `ReferenceValue` value objects, and the `DomainError` hierarchy.
+- `ports/`: `Repository[T]`, the `Repositories` bundle and `ReferenceCatalog`.
+- `application/`: `CrudService` is generic. `build_services()` in `services.py` is where each entity's reference fields (field → catalog kind) and parent-id checks are declared. `ApplicationService` adds the derived `rpo`/`rto`. `ReferenceAdminService` maintains the catalogs.
+- `adapters/persistence/`: SQLAlchemy Core (sync) repositories, `PostgresReferenceCatalog`, and Alembic migrations in `migrations/versions/` (0001 schema, 0002 seed). `tables.py` must stay in sync with the migrations, and a test compares them.
+- `adapters/api/`: `crud_router()` builds the CRUD routes for any entity. Nested resources pass `parent_field` and `parent_dependency`. `reference_router` serves `/reference/{kind}`. `errors.py` maps domain errors to HTTP codes.
 
-- `<<extracted>>` marks fields in the UML (`#` visibility) that are not input by the user:
-  - `Application.RPO` / `Application.RTO`
-  - `Technology.StandardStatus` / `StandardStatusDetails` / `ActionPlan`
-- RPO/RTO are **computed at read time** from `availability_level`, not stored, and not taken as constructor parameters (see the commented-out note in `domain.puml`). Use a `compute_rpo_rto(availability_level)` function, so `availability_level` is the single source of truth. The mapping in that note is:
+Key design rules:
 
-  | Availability | RPO | RTO |
-  |---|---|---|
-  | LOW | 72h | 24h |
-  | MODERATE | 24h | 24h |
-  | SERIOUS | 4h | 0h |
-  | EXTREME | 2h | 0h |
-
-### Inconsistencies in the diagram to resolve before coding
-
-- `DataType --> UsageMode` is drawn, but the model has no such attribute on `DataType`. `UsageMode` is on `DataFlow`.
-- `Team "1" -- "*" Application` appears twice, as "owns" and "same team".
-- `DataFlow "1" -- "*" Application : references` is drawn as one link, while the class has two application ids (source and target).
+- **Value objects are configuration tables, not enums.** There are eight catalog tables, keyed by their text `code`. Entities store the code, and FKs are `ON UPDATE CASCADE ON DELETE RESTRICT`. Adding a new catalog means adding a VO in `domain/reference.py` and its `REFERENCE_KINDS` entry, a migration, and a field entry in `build_services()`.
+- **RPO/RTO are derived.** They are read from the `availability_level` row when an application is presented. They are never stored or accepted as input.
+- **Delete semantics.** Children cascade with their parent (members, functions, data types, technologies). Cross-aggregate references are `RESTRICT` and return 409.
+- **Errors.** `NotFound` → 404, `InvalidEntity` / `InvalidReferenceCode` / `DanglingReference` → 422, `ReferenceInUse` / `AlreadyExists` → 409.
+- Unit tests use the in-memory fakes in `tests/fakes.py`. Adapter and end-to-end tests use a real Postgres through testcontainers (`tests/conftest.py`).
