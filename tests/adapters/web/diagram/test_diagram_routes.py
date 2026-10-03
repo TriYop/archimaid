@@ -2,7 +2,10 @@ import re
 import xml.etree.ElementTree as ET
 from uuid import uuid4
 
+import pytest
+
 from archimaid.adapters.web import resources as r
+from archimaid.domain.errors import NotFound
 
 NS = "{http://www.w3.org/2000/svg}"
 
@@ -147,3 +150,51 @@ def test_an_application_with_no_data_still_renders_a_diagram(client, services):
     assert response.status_code == 200
     assert "No data flows or personas yet." in response.text
     assert client.get(f"/ui/applications/{app.id}/tabs/diagram").status_code == 200
+
+
+def test_diagram_tab_centres_a_wide_diagram_on_load(client, services):
+    app = scenario(services)
+    html = client.get(f"/ui/applications/{app.id}/tabs/diagram").text
+    assert (
+        'onload="var d=this.parentElement; d.scrollLeft=(d.scrollWidth-d.clientWidth)/2"' in html
+    )
+    assert re.search(
+        rf'data="/ui/applications/{app.id}/diagram.svg" width="(\d+)" height="(\d+)"', html
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "attachment", "status"),
+    [
+        ("?download=1", True, 200),
+        ("?download=true", True, 200),
+        ("?download=0", False, 200),
+        ("?download=false", False, 200),
+        ("", False, 200),
+        ("?download=2", False, 422),
+        ("?download=maybe", False, 422),
+    ],
+)
+def test_download_flag_is_a_strict_boolean(client, services, query, attachment, status):
+    app = make_app(services)
+    response = client.get(f"/ui/applications/{app.id}/diagram.svg{query}")
+    assert response.status_code == status
+    if status == 200:
+        assert ("content-disposition" in response.headers) is attachment
+    else:
+        assert "<html" in response.text
+
+
+def test_a_neighbour_vanishing_mid_request_gives_an_html_404(client, services, monkeypatch, hx):
+    app = scenario(services)
+
+    def gone(*args, **kwargs):
+        raise NotFound("gone")
+
+    monkeypatch.setattr(services.data_types, "get", gone)
+    svg = client.get(f"/ui/applications/{app.id}/diagram.svg")
+    assert svg.status_code == 404
+    assert "<html" in svg.text and svg.headers["content-type"].startswith("text/html")
+    tab = client.get(f"/ui/applications/{app.id}/tabs/diagram", headers=hx)
+    assert tab.status_code == 404
+    assert tab.headers["HX-Retarget"] == "#flash"

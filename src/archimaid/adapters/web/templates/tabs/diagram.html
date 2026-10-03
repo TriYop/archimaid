@@ -3,7 +3,7 @@
   <a href="/ui/applications/{{ app.id }}/diagram.svg?download=1" download>Download SVG</a>
 </p>
 <div class="diagram">
-  <object type="image/svg+xml" data="/ui/applications/{{ app.id }}/diagram.svg" width="{{ diagram.width }}" height="{{ diagram.height }}" aria-label="Interaction diagram of {{ app.name }}">
+  <object type="image/svg+xml" data="/ui/applications/{{ app.id }}/diagram.svg" width="{{ diagram.width }}" height="{{ diagram.height }}" aria-label="Interaction diagram of {{ app.name }}" onload="var d=this.parentElement; d.scrollLeft=(d.scrollWidth-d.clientWidth)/2">
     <a href="/ui/applications/{{ app.id }}/diagram.svg">Open the diagram</a>
   </object>
 </div>

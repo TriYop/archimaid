@@ -20,6 +20,13 @@ def _fetch(service: Any, entity_id: UUID) -> Any:
         raise UiError(exc) from exc
 
 
+def _draw_diagram(services: Services, application_id: UUID) -> Any:
+    try:
+        return draw(build_diagram(services, application_id))
+    except NotFound as exc:
+        raise UiError(exc) from exc
+
+
 def pages_router(services: Services) -> APIRouter:
     """Full-page routes. Each page embeds the shared resource tables."""
     router = APIRouter()
@@ -82,7 +89,7 @@ def pages_router(services: Services) -> APIRouter:
                 services.data_flows, services.data_flows.list(target_application_id=app.id)
             )
         elif tab == "diagram":
-            context["diagram"] = draw(build_diagram(services, app.id))
+            context["diagram"] = _draw_diagram(services, app.id)
         return context
 
     @router.get("/ui/applications/{application_id}")
@@ -141,9 +148,9 @@ def pages_router(services: Services) -> APIRouter:
         return render(request, "data_flows.html", flows=flows)
 
     @router.get("/ui/applications/{application_id}/diagram.svg")
-    def application_diagram(application_id: UUID, download: int = 0):
+    def application_diagram(application_id: UUID, download: bool = False):
         app = _fetch(services.applications, application_id)
-        diagram = draw(build_diagram(services, application_id))
+        diagram = _draw_diagram(services, application_id)
         headers = {
             "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
             "X-Content-Type-Options": "nosniff",
