@@ -45,7 +45,7 @@ The implementation must reproduce this look and layout. Where this text and the 
 
 ## Layout and rendering
 
-All sizes are pixels. Text widths are estimated as `len(text) * font_size * 0.56`; names are truncated with "…" (the full text is in the tooltip).
+All sizes are pixels. Text widths are estimated as `display_len(text) * font_size * 0.56`, where `display_len` counts full-width and wide East Asian characters as 2 and everything else as 1; names are truncated by display length with "…" (the full text is in the tooltip). The persona row is kept inside the canvas margins.
 
 **Constants:** margin 40, gap between boxes in a row 40, other-application box height 44, current-application header band 36, function cell height 56, frame padding 6, persona figure block 78 high. Fonts: sans-serif, 13 px (15 px bold for the current application's name, 11 px for flow labels).
 
