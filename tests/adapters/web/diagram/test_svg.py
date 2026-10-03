@@ -5,7 +5,12 @@ import pytest
 
 from archimaid.adapters.web.diagram import Diagram, draw
 from archimaid.adapters.web.diagram.layout import compute_layout
-from archimaid.adapters.web.diagram.model import DiagramFunction, DiagramModel
+from archimaid.adapters.web.diagram.model import (
+    DiagramFlow,
+    DiagramFunction,
+    DiagramModel,
+    DiagramNeighbour,
+)
 from tests.adapters.web.diagram.samples import EMPTY, FULL, HOSTILE, SMALL
 
 NS = "{http://www.w3.org/2000/svg}"
@@ -103,3 +108,27 @@ def test_reproduces_the_approved_sample_files(sample, name):
     approved = parse((ASSETS / f"{name}.svg").read_text(encoding="utf-8"))
     ours = parse(draw(sample).svg)
     assert drawable(ours) == drawable(approved)
+
+
+@pytest.mark.parametrize(
+    "nasty",
+    [
+        "x\ud800y\x00z\x1f",
+        "<script>alert(1)</script>&\"'",
+        "]]><!-- -->",
+        "‮ rtl ￾￿",
+        "😀 日本語",
+    ],
+)
+def test_hostile_text_in_every_field_still_gives_a_safe_document(nasty):
+    model = DiagramModel(
+        application=nasty,
+        functions=(DiagramFunction(nasty, nasty),),
+        targets=(DiagramNeighbour(nasty, (DiagramFlow(nasty, nasty, nasty),)),),
+        sources=(DiagramNeighbour(nasty, (DiagramFlow(nasty, nasty, nasty),)),),
+    )
+    svg = draw(model).svg
+    parse(svg)
+    svg.encode("utf-8")
+    for marker in ("<script", "<!--", "]]>"):
+        assert marker not in svg
