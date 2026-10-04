@@ -148,6 +148,8 @@ package "Aggregate: Application" <<aggregate>> {
         -DataFlowId: UUID
         -SourceApplicationId: UUID
         -TargetApplicationId: UUID
+        -SourceFunctionId: UUID | null
+        -TargetFunctionId: UUID | null
         -DataTypeId: UUID
         -UsageMode: UsageMode | null
         -UsageExplanation: String | null
@@ -215,6 +217,8 @@ Persona "1" -- "*" Function : exercises (nullable PersonaId)
 DataFlow "*" -- "1" DataType : transfers
 DataFlow "*" -- "1" Application : SourceApplicationId
 DataFlow "*" -- "1" Application : TargetApplicationId
+DataFlow "*" -- "0..1" Function : SourceFunctionId
+DataFlow "*" -- "0..1" Function : TargetFunctionId
 
 ' -----------------------
 Application --> ConfidentialityLevel : confidentiality_level

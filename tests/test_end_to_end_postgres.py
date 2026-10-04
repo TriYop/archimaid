@@ -90,3 +90,37 @@ def test_blocked_delete_and_dangling_reference_bodies_have_no_postgres_text(clie
     assert (blocked.status_code, dangling.status_code) == (409, 422)
     for response in (blocked, dangling):
         assert not any(w in response.text for w in ("violates", "constraint", "_fkey"))
+
+
+def test_function_flows_over_real_postgres(client):
+    team = client.post("/teams", json={"name": "Payments"}).json()
+    source = client.post("/applications", json={"team_id": team["id"], "name": "Billing"}).json()
+    target = client.post("/applications", json={"team_id": team["id"], "name": "Ledger"}).json()
+    dtype = client.post(f"/applications/{source['id']}/data-types", json={"name": "Invoice"}).json()
+    sender = client.post(f"/applications/{source['id']}/functions", json={"name": "Send"}).json()
+    receiver = client.post(f"/applications/{target['id']}/functions", json={"name": "Post"}).json()
+    body = {
+        "source_application_id": source["id"],
+        "source_function_id": sender["id"],
+        "target_application_id": target["id"],
+        "target_function_id": receiver["id"],
+        "data_type_id": dtype["id"],
+    }
+    flow = client.post("/data-flows", json=body)
+    assert flow.status_code == 201
+
+    # a function of the other application is rejected, not stored
+    wrong = client.post("/data-flows", json={**body, "source_function_id": receiver["id"]})
+    assert wrong.status_code == 422
+
+    # the web tab and the diagram render it
+    tab = client.get(f"/ui/applications/{source['id']}/tabs/data-flows")
+    assert tab.status_code == 200 and "Billing › Send" in tab.text
+    assert client.get(f"/ui/applications/{source['id']}/diagram.svg").status_code == 200
+
+    # deleting the function keeps the flow and nulls that end
+    deleted = client.delete(f"/applications/{source['id']}/functions/{sender['id']}")
+    assert deleted.status_code == 204
+    kept = client.get(f"/data-flows/{flow.json()['id']}").json()
+    assert kept["source_function_id"] is None
+    assert kept["target_function_id"] == receiver["id"]

@@ -64,7 +64,7 @@ Tables follow `domain.puml`. Every table has a UUID primary key, `created_at` an
 - `application` (`team_id` FK, required)
 - `function` (`application_id` FK, `persona_id` nullable FK to `persona`)
 - `data_type` (`application_id` FK)
-- `data_flow` (`source_application_id`, `target_application_id`, `data_type_id` FKs)
+- `data_flow` (`source_application_id`, `target_application_id`, `data_type_id` FKs; optional `source_function_id` and `target_function_id` FKs to `function`, `ON DELETE SET NULL`, each function must belong to the application on its end; see `2026-10-05-archimaid-function-flows-design.md`)
 - `technology` (`application_id` FK)
 - `persona` (global, no owner). `Persona.Category` stays free text.
 
@@ -130,6 +130,7 @@ The foreign keys are a backstop. Domain-level validation through the port is the
   - Children inside an aggregate cascade: `team_member` with its `team`, and `function`, `data_type` and `technology` with their `application`.
   - References across aggregates are `RESTRICT`: `application` to `team`, `data_flow` to its source and target `application`, `data_flow` to `data_type`, and `function` to `persona`.
   - Deleting an application that is the source or target of a data flow is therefore blocked with 409.
+  - A data flow's optional function ends are `SET NULL`: deleting a function keeps the flow as an application-level link.
 - **Extra domain errors:**
 
   | Error | Meaning | HTTP |
