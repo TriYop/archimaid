@@ -87,6 +87,12 @@ def build_services(
                 ParentLink("source_application_id", repos.applications),
                 ParentLink("target_application_id", repos.applications),
                 ParentLink("data_type_id", repos.data_types),
+                ParentLink(
+                    "source_function_id", repos.functions, owner_field="source_application_id"
+                ),
+                ParentLink(
+                    "target_function_id", repos.functions, owner_field="target_application_id"
+                ),
             ],
             clock=clock,
         ),

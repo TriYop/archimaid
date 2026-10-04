@@ -7,7 +7,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from archimaid.domain.entities import Entity
-from archimaid.domain.errors import DanglingReference, InvalidReferenceCode, NotFound
+from archimaid.domain.errors import (
+    DanglingReference,
+    InvalidEntity,
+    InvalidReferenceCode,
+    NotFound,
+)
 from archimaid.ports.reference_catalog import ReferenceCatalog
 from archimaid.ports.repository import Repository
 
@@ -18,10 +23,15 @@ def utc_now() -> datetime:
 
 @dataclass(frozen=True)
 class ParentLink:
-    """An id field of the entity that must exist in ``repository``."""
+    """An id field of the entity that must exist in ``repository``.
+
+    With ``owner_field``, the parent must also belong to the application whose id
+    is held in that other field of the entity.
+    """
 
     field: str
     repository: Repository[Any]
+    owner_field: str | None = None
 
 
 class CrudService[T: Entity]:
@@ -81,5 +91,15 @@ class CrudService[T: Entity]:
                 raise InvalidReferenceCode(f"{code!r} is not a valid {kind}")
         for link in self._parents:
             parent_id = getattr(entity, link.field)
-            if parent_id is not None and link.repository.get(parent_id) is None:
+            if parent_id is None:
+                continue
+            parent = link.repository.get(parent_id)
+            if parent is None:
                 raise DanglingReference(f"{link.field} {parent_id} does not exist")
+            if link.owner_field is not None:
+                owner_id = getattr(entity, link.owner_field)
+                if parent.application_id != owner_id:
+                    raise InvalidEntity(
+                        f"{link.field} {parent_id} does not belong to "
+                        f"{link.owner_field} {owner_id}"
+                    )
