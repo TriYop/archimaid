@@ -256,3 +256,48 @@ def test_nul_character_is_an_invalid_entity_on_add_and_update(repos):
     team.name = "y\u0000"
     with pytest.raises(InvalidEntity):
         repos.teams.update(team)
+
+
+def add_function(repos, app, name="Create invoice"):
+    function = Function(application_id=app.id, name=name, **meta())
+    repos.functions.add(function)
+    return function
+
+
+def add_function_flow(repos):
+    team = add_team(repos)
+    source, target = add_app(repos, team, "Billing"), add_app(repos, team, "Ledger")
+    data_type = DataType(application_id=source.id, name="Invoice", **meta())
+    repos.data_types.add(data_type)
+    sender, receiver = add_function(repos, source), add_function(repos, target, "Post entry")
+    flow = DataFlow(
+        source_application_id=source.id,
+        source_function_id=sender.id,
+        target_application_id=target.id,
+        target_function_id=receiver.id,
+        data_type_id=data_type.id,
+        **meta(),
+    )
+    repos.data_flows.add(flow)
+    return flow, source, target, sender, receiver
+
+
+def test_data_flow_round_trips_function_ends(repos):
+    flow, *_ = add_function_flow(repos)
+    assert repos.data_flows.get(flow.id) == flow
+
+
+def test_deleting_a_function_keeps_the_flow_and_nulls_that_end(repos):
+    # Review Focus test (2)
+    flow, _, _, sender, receiver = add_function_flow(repos)
+    repos.functions.delete(sender.id)
+    stored = repos.data_flows.get(flow.id)
+    assert stored is not None
+    assert stored.source_function_id is None
+    assert stored.target_function_id == receiver.id
+
+
+def test_deleting_an_application_used_by_a_function_flow_is_still_blocked(repos):
+    _, _, target, _, _ = add_function_flow(repos)
+    with pytest.raises(ReferenceInUse):
+        repos.applications.delete(target.id)

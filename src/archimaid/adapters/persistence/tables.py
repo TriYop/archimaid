@@ -143,6 +143,8 @@ data_flow = Table(
     _id_ref("source_application_id", "application", "RESTRICT"),
     _id_ref("target_application_id", "application", "RESTRICT"),
     _id_ref("data_type_id", "data_type", "RESTRICT"),
+    _id_ref("source_function_id", "function", "SET NULL", nullable=True),
+    _id_ref("target_function_id", "function", "SET NULL", nullable=True),
     _code_ref("usage_mode", "usage_mode"),
     _text("usage_explanation"),
     *_timestamps(),

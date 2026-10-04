@@ -73,3 +73,13 @@ def test_data_flow_has_usage_mode_and_no_required_text():
         **meta(),
     )
     assert flow.validate() is True
+
+
+def test_data_flow_function_ends_default_to_none():
+    flow = DataFlow(
+        source_application_id=uuid4(),
+        target_application_id=uuid4(),
+        data_type_id=uuid4(),
+        **meta(),
+    )
+    assert flow.source_function_id is None and flow.target_function_id is None
