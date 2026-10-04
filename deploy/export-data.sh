@@ -28,8 +28,9 @@ until podman exec "$CONTAINER" pg_isready -q -U "$DB_USER" -d "$DB_NAME"; do
   sleep 1
 done
 
-mkdir -p "$HERE/data"
 umask 077
+mkdir -p "$HERE/data"
+chmod 700 "$HERE/data"
 echo "==> dumping $DB_NAME from $CONTAINER"
 podman exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" \
   --no-owner --no-acl --clean --if-exists > "$OUT.tmp" || { rm -f "$OUT.tmp"; fail "pg_dump failed"; }
@@ -38,6 +39,9 @@ podman exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" \
 grep -q 'alembic_version' "$OUT.tmp" || { rm -f "$OUT.tmp"; fail "the dump has no alembic_version"; }
 grep -q 'data_flow' "$OUT.tmp" || { rm -f "$OUT.tmp"; fail "the dump has no data_flow table"; }
 mv "$OUT.tmp" "$OUT"
+# The database user inside the container must be able to read the dump. The directory
+# (mode 700, from the umask above) is what keeps other host users out.
+chmod 644 "$OUT"
 
 podman exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -At < "$HERE/row-counts.sql" > "$COUNTS" \
   || fail "could not count rows"
