@@ -155,6 +155,56 @@ def test_flows_of_other_applications_are_not_included(services, world):
     assert model.targets == () and model.sources == ()
 
 
+def test_function_index_points_at_the_current_applications_function(services, world):
+    billing, ledger = world.app("Billing"), world.app("Ledger")
+    dtype = world.dtype(billing, "x")
+    world.function(billing, "send")
+    create = world.function(billing, "Create")  # sorts before "send"
+    world.flow(billing, ledger, dtype, source_function_id=create.id)
+    plain = world.flow(ledger, billing, dtype)
+    model = build_diagram(services, billing.id)
+    assert plain.source_function_id is None
+    assert model.targets[0].flows[0].function_index == 0
+    assert model.sources[0].flows[0].function_index is None
+
+
+def test_incoming_flow_uses_the_target_function(services, world):
+    billing, ledger = world.app("Billing"), world.app("Ledger")
+    world.function(billing, "a")
+    receive = world.function(billing, "b")
+    world.flow(ledger, billing, world.dtype(ledger, "x"), target_function_id=receive.id)
+    model = build_diagram(services, billing.id)
+    assert model.sources[0].flows[0].function_index == 1
+
+
+def test_functions_of_third_party_applications_stay_hidden_and_the_flow_goes_to_the_parent(
+    services, world
+):
+    # Review Focus test (5)
+    billing, ledger = world.app("Billing"), world.app("Ledger")
+    post = world.function(ledger, "Post entry")
+    world.flow(billing, ledger, world.dtype(billing, "x"), target_function_id=post.id)
+    model = build_diagram(services, billing.id)
+    assert [n.name for n in model.targets] == ["Ledger"]
+    assert model.targets[0].flows[0].function_index is None
+    assert "Post entry" not in repr(model)
+    other_side = build_diagram(services, ledger.id)
+    assert [n.name for n in other_side.sources] == ["Billing"]
+    assert other_side.sources[0].flows[0].function_index == 0
+
+
+def test_function_to_function_flow_inside_one_application_is_counted_not_drawn(services, world):
+    # Review Focus test (5)
+    a = world.app("A")
+    send, receive = world.function(a, "send"), world.function(a, "receive")
+    world.flow(
+        a, a, world.dtype(a, "x"), source_function_id=send.id, target_function_id=receive.id
+    )
+    model = build_diagram(services, a.id)
+    assert model.self_flows == 1
+    assert model.targets == () and model.sources == ()
+
+
 def test_a_persona_shared_by_two_functions_is_named_on_both(services, world):
     app = world.app("A")
     pat = services.personas.create({"name": "Pat"})

@@ -49,12 +49,21 @@ def build_diagram(services: Services, application_id: UUID) -> DiagramModel:
         for f in functions
     )
 
-    def group(flows: list[Any], other_attr: str) -> tuple[DiagramNeighbour, ...]:
+    function_index = {f.id: index for index, f in enumerate(functions)}
+
+    def group(
+        flows: list[Any], other_attr: str, own_function_attr: str
+    ) -> tuple[DiagramNeighbour, ...]:
         by_app: dict[UUID, list[DiagramFlow]] = {}
         for flow in flows:
             mode = mode_labels.get(flow.usage_mode, flow.usage_mode) if flow.usage_mode else None
             by_app.setdefault(getattr(flow, other_attr), []).append(
-                DiagramFlow(type_name(flow.data_type_id), mode, flow.usage_explanation)
+                DiagramFlow(
+                    type_name(flow.data_type_id),
+                    mode,
+                    flow.usage_explanation,
+                    function_index.get(getattr(flow, own_function_attr)),
+                )
             )
         ordered = sorted(
             by_app.items(), key=lambda item: (app_name(item[0]).casefold(), str(item[0]))
@@ -86,10 +95,12 @@ def build_diagram(services: Services, application_id: UUID) -> DiagramModel:
         targets=group(
             [f for f in outgoing if f.target_application_id != application_id],
             "target_application_id",
+            "source_function_id",
         ),
         sources=group(
             [f for f in incoming if f.source_application_id != application_id],
             "source_application_id",
+            "target_function_id",
         ),
         self_flows=self_flows,
     )

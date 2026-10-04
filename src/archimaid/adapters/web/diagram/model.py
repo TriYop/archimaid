@@ -12,6 +12,7 @@ class DiagramFlow:
     data_type: str
     usage_mode: str | None = None
     explanation: str | None = None
+    function_index: int | None = None  # index into DiagramModel.functions, on our end of the flow
 
 
 @dataclass(frozen=True)
