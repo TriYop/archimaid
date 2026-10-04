@@ -78,6 +78,8 @@ class DataFlowIn(BaseModel):
     source_application_id: UUID
     target_application_id: UUID
     data_type_id: UUID
+    source_function_id: UUID | None = None
+    target_function_id: UUID | None = None
     usage_mode: str | None = None
     usage_explanation: str | None = None
 

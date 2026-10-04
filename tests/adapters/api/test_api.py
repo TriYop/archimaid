@@ -190,6 +190,36 @@ def test_data_types_and_technologies_crud(client):
     assert bad.status_code == 422
 
 
+def test_data_flows_accept_and_validate_function_ends(client):
+    source, target = make_app(client), make_app(client)
+    dt = post(client, f"/applications/{source['id']}/data-types", {"name": "Invoice"})
+    sender = post(client, f"/applications/{source['id']}/functions", {"name": "Send"})
+    receiver = post(client, f"/applications/{target['id']}/functions", {"name": "Post"})
+    body = {
+        "source_application_id": source["id"],
+        "target_application_id": target["id"],
+        "data_type_id": dt["id"],
+    }
+    flow = post(
+        client,
+        "/data-flows",
+        {**body, "source_function_id": sender["id"], "target_function_id": receiver["id"]},
+    )
+    assert flow["source_function_id"] == sender["id"]
+    assert flow["target_function_id"] == receiver["id"]
+    plain = post(client, "/data-flows", body)
+    assert plain["source_function_id"] is None and plain["target_function_id"] is None
+    swapped = client.post("/data-flows", json={**body, "source_function_id": receiver["id"]})
+    assert swapped.status_code == 422
+    ghost = client.post("/data-flows", json={**body, "target_function_id": str(uuid4())})
+    assert ghost.status_code == 422
+    cleared = client.put(
+        f"/data-flows/{flow['id']}", json={**body, "source_function_id": sender["id"]}
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["target_function_id"] is None
+
+
 def test_data_flows_validate_references_and_filter(client):
     source, target = make_app(client), make_app(client)
     dt = post(client, f"/applications/{source['id']}/data-types", {"name": "Invoice"})
