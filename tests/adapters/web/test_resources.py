@@ -41,7 +41,7 @@ def test_widgets_have_what_they_need(resource):
         if field.widget == "select_ref":
             assert field.kind in REFERENCE_KINDS
         if field.widget == "select_entity":
-            assert field.source in {"personas", "applications", "data_types"}
+            assert field.source in {"personas", "applications", "data_types", "functions"}
 
 
 @pytest.mark.parametrize("resource", r.ALL_RESOURCES, ids=lambda x: x.slug)

@@ -30,6 +30,20 @@ def test_data_type_choices_are_labelled_with_their_application(services):
     assert groups[0][1][0].label == "Billing › Invoice"
 
 
+def test_function_choices_are_grouped_by_application_and_sorted(services):
+    team = services.teams.create({"name": "T"})
+    zed = services.applications.create({"team_id": team.id, "name": "Zed"})
+    abc = services.applications.create({"team_id": team.id, "name": "Abc"})
+    services.functions.create({"application_id": zed.id, "name": "b"})
+    services.functions.create({"application_id": zed.id, "name": "A"})
+    services.functions.create({"application_id": abc.id, "name": "x"})
+    groups = Lookups(services).choices(r.DATA_FLOW.field("source_function_id"))
+    assert [(group, [o.label for o in options]) for group, options in groups] == [
+        ("Abc", ["Abc › x"]),
+        ("Zed", ["Zed › A", "Zed › b"]),
+    ]
+
+
 def test_persona_choices_are_sorted_by_name(services):
     services.personas.create({"name": "zed"})
     services.personas.create({"name": "Alice"})

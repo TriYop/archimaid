@@ -18,7 +18,8 @@ class Field:
     required: bool = False
     nullable: bool = True
     kind: str | None = None  # select_ref: the catalog kind
-    source: str | None = None  # select_entity: "personas" | "applications" | "data_types"
+    # select_entity: "personas" | "applications" | "data_types" | "functions"
+    source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,7 @@ DATA_FLOW = Resource(
             required=True,
             source="applications",
         ),
+        Field("source_function_id", "Source function", "select_entity", source="functions"),
         Field(
             "target_application_id",
             "Target application",
@@ -199,6 +201,7 @@ DATA_FLOW = Resource(
             required=True,
             source="applications",
         ),
+        Field("target_function_id", "Target function", "select_entity", source="functions"),
         Field("data_type_id", "Data type", "select_entity", required=True, source="data_types"),
         Field("usage_mode", "Usage mode", "select_ref", kind="usage_mode"),
         Field("usage_explanation", "Usage explanation"),

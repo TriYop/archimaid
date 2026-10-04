@@ -95,6 +95,8 @@ class Lookups:
             return self._applications()
         if field.source == "data_types":
             return self._data_types()
+        if field.source == "functions":
+            return self._functions()
         raise ValueError(f"unknown option source {field.source!r}")
 
     def _personas(self) -> list[Option]:
@@ -107,6 +109,14 @@ class Lookups:
             Option(str(a.id), a.name, teams.get(a.team_id, "?"))
             for a in self._services.applications.list()
         ]
+        return sorted(options, key=lambda o: ((o.group or "").lower(), o.label.lower()))
+
+    def _functions(self) -> list[Option]:
+        apps = {a.id: a.name for a in self._services.applications.list()}
+        options = []
+        for f in self._services.functions.list():
+            app_name = apps.get(f.application_id, "?")
+            options.append(Option(str(f.id), f"{app_name} › {f.name}", app_name))
         return sorted(options, key=lambda o: ((o.group or "").lower(), o.label.lower()))
 
     def _data_types(self) -> list[Option]:

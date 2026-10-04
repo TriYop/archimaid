@@ -137,6 +137,8 @@ def pages_router(services: Services) -> APIRouter:
                 "id": f.id,
                 "source_id": f.source_application_id,
                 "source_name": apps.get(f.source_application_id, "?"),
+                "source_function": lookups.display(DATA_FLOW.field("source_function_id"), vars(f)),
+                "target_function": lookups.display(DATA_FLOW.field("target_function_id"), vars(f)),
                 "target_id": f.target_application_id,
                 "target_name": apps.get(f.target_application_id, "?"),
                 "data_type": lookups.display(DATA_FLOW.field("data_type_id"), vars(f)),

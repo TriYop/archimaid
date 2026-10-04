@@ -103,6 +103,85 @@ def test_flow_edit_row_has_source_target_and_data_type_selects(client, services)
     assert f'<option value="{target.id}" selected>' in html
 
 
+def make_functions(services, source, target):
+    send = services.functions.create({"application_id": source.id, "name": "Send"})
+    post = services.functions.create({"application_id": target.id, "name": "Post"})
+    return send, post
+
+
+def test_flow_forms_offer_functions_grouped_by_application(client, services):
+    source, target, _ = setup_two_apps(services)
+    make_functions(services, source, target)
+    html = client.get(f"/ui/applications/{source.id}/tabs/data-flows").text
+    assert 'aria-label="Source function"' in html and 'aria-label="Target function"' in html
+    assert ">Billing › Send</option>" in html and ">Ledger › Post</option>" in html
+    assert '<optgroup label="Ledger">' in html
+
+
+def test_add_a_flow_between_functions(client, services):
+    source, target, data_type = setup_two_apps(services)
+    send, post = make_functions(services, source, target)
+    response = client.post(
+        "/ui/data-flows?table=outgoing",
+        data={
+            "source_application_id": str(source.id),
+            "source_function_id": str(send.id),
+            "target_application_id": str(target.id),
+            "target_function_id": str(post.id),
+            "data_type_id": str(data_type.id),
+        },
+    )
+    assert response.status_code == 201
+    assert "Billing › Send" in response.text and "Ledger › Post" in response.text
+    flow = services.data_flows.list()[0]
+    assert (flow.source_function_id, flow.target_function_id) == (send.id, post.id)
+
+
+def test_a_function_of_the_wrong_application_is_an_inline_422(client, services):
+    source, target, data_type = setup_two_apps(services)
+    _, post = make_functions(services, source, target)
+    response = client.post(
+        "/ui/data-flows?table=outgoing",
+        data={
+            "source_application_id": str(source.id),
+            "source_function_id": str(post.id),
+            "target_application_id": str(target.id),
+            "data_type_id": str(data_type.id),
+        },
+    )
+    assert response.status_code == 422 and "does not belong" in response.text
+    assert services.data_flows.list() == []
+
+
+def test_choosing_the_blank_option_when_saving_clears_the_function(client, services):
+    # Review Focus test (4)
+    source, target, data_type = setup_two_apps(services)
+    send, _ = make_functions(services, source, target)
+    flow = make_flow(services, source, target, data_type, source_function_id=send.id)
+    saved = client.put(
+        f"/ui/data-flows/{flow.id}",
+        data={
+            "source_application_id": str(source.id),
+            "source_function_id": "",
+            "target_application_id": str(target.id),
+            "target_function_id": "",
+            "data_type_id": str(data_type.id),
+        },
+    )
+    assert saved.status_code == 200
+    assert services.data_flows.get(flow.id).source_function_id is None
+
+
+def test_overview_shows_the_function_ends(client, services):
+    source, target, data_type = setup_two_apps(services)
+    send, post = make_functions(services, source, target)
+    make_flow(services, source, target, data_type, source_function_id=send.id)
+    html = client.get("/ui/data-flows").text
+    assert "<th>Source function</th>" in html and "<th>Target function</th>" in html
+    assert "Billing › Send" in html
+    assert "<td>—</td>" in html
+
+
 def test_flow_save_and_delete(client, services):
     source, target, data_type = setup_two_apps(services)
     flow = make_flow(services, source, target, data_type)
