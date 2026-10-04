@@ -27,6 +27,10 @@ uv run uvicorn archimaid.main:build_app --factory --reload     # http://localhos
 
 The Postgres tests start real `postgres:16-alpine` containers through testcontainers, so they need a container runtime reachable via `DOCKER_HOST`. Copy `.env.example` to `.env` (git-ignored, loaded by `tests/conftest.py`; real environment variables win), e.g. the rootless podman socket plus `TESTCONTAINERS_RYUK_DISABLED=true`.
 
+## Deployment
+
+`deploy/` packages the app for a fresh podman machine (`deploy/README.md`): `Containerfile` (image; `deploy/entrypoint.sh` waits for the DB, migrates, serves), `deploy/archimaid-pod.yaml` (`podman kube play` pod: Postgres + app), `deploy/deploy.sh` (manual steps), `deploy/export-data.sh` (dump of the dev database into git-ignored `deploy/data/`), `deploy/make-package.sh` (tarball in `dist/`). Spec: `docs/superpowers/specs/2026-10-05-archimaid-podman-deploy-design.md`. The podman secret holds a Kubernetes `Secret` manifest because `secretKeyRef` requires it.
+
 ## Architecture
 
 Hexagonal. Dependencies point inward: `adapters` → `application` → `ports`/`domain`. `src/archimaid/domain` imports no framework.
