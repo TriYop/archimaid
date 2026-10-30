@@ -19,9 +19,9 @@ spec:
       volumeMounts:
         - name: data
           mountPath: /var/lib/postgresql/data
-        - name: dump
-          mountPath: /docker-entrypoint-initdb.d/archimaid.sql
-          readOnly: true
+        - name: dump  # dump
+          mountPath: /docker-entrypoint-initdb.d/archimaid.sql  # dump
+          readOnly: true  # dump
     - name: app
       image: "@IMAGE@"
       imagePullPolicy: Never
@@ -39,7 +39,7 @@ spec:
     - name: data
       persistentVolumeClaim:
         claimName: "@VOLUME@"
-    - name: dump
-      hostPath:
-        path: "@DUMP@"
-        type: File
+    - name: dump  # dump
+      hostPath:  # dump
+        path: "@DUMP@"  # dump
+        type: File  # dump

@@ -27,6 +27,10 @@ Options (environment variables): `ARCHIMAID_PORT` (8000), `ARCHIMAID_BIND` (127.
 
 `deploy/data/` is a private directory (mode 700): the dump inside it is world-readable so that the database inside the container can read it, and the directory is what keeps other users of the machine out. Delete the unpacked `deploy/data/` once the data is loaded if you do not need it again.
 
+## Empty instance (no data)
+
+If `deploy/data/archimaid.sql` is absent, `deploy.sh` deploys an empty instance: the application creates the schema on first start and the migrations seed the reference data (confidentiality, integrity, availability and traceability levels, function categories, usage modes, technology types, tech standard statuses), with no teams, applications or other records. To get one, run `deploy.sh` from a checkout of the source without `deploy/data/` (for example `git clone`, or delete `deploy/data/` from an unpacked archive). The dump is only read when the volume is new.
+
 ## Verify the data
 
 ```sh

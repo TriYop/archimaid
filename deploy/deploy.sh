@@ -22,7 +22,12 @@ case "${1:-}" in
 esac
 
 command -v podman >/dev/null 2>&1 || fail "podman is not installed"
-[ -f "$DUMP" ] || fail "missing $DUMP (run deploy/export-data.sh where the data lives, then repackage)"
+if [ -f "$DUMP" ]; then
+  WITH_DUMP=1
+else
+  WITH_DUMP=0
+  echo "==> no $DUMP: deploying an empty instance (schema and reference data only)"
+fi
 case $PORT in ''|*[!0-9]*) fail "ARCHIMAID_PORT must be a number" ;; esac
 
 echo "==> building image $IMAGE"
@@ -52,7 +57,11 @@ if podman volume exists "$VOLUME"; then
 else
   podman volume create "$VOLUME" >/dev/null
   NEW_VOLUME=1
-  echo "==> new volume $VOLUME: the dump will be loaded on first start"
+  if [ "$WITH_DUMP" = 1 ]; then
+    echo "==> new volume $VOLUME: the dump will be loaded on first start"
+  else
+    echo "==> new volume $VOLUME: the application creates the schema and reference data on first start"
+  fi
 fi
 
 TMP=$(mktemp)
@@ -60,11 +69,13 @@ trap 'rm -f "$TMP"' EXIT
 sed -e "s|@POD@|$POD|g" -e "s|@SECRET@|$SECRET|g" -e "s|@IMAGE@|$IMAGE|g" \
     -e "s|@PORT@|$PORT|g" -e "s|@BIND@|$BIND|g" -e "s|@VOLUME@|$VOLUME|g" \
     -e "s|@DUMP@|$DUMP|g" "$HERE/archimaid-pod.yaml" > "$TMP"
+# Without a dump, drop the lines that mount it (they end with "# dump").
+[ "$WITH_DUMP" = 1 ] || sed -i '/# dump$/d' "$TMP"
 
 echo "==> starting pod $POD"
 podman kube play --replace "$TMP" >/dev/null
 
-echo "==> waiting for the application (the first start loads the dump)"
+echo "==> waiting for the application (the first start initializes the database)"
 i=0
 until podman exec "${POD}-app" python -c \
   "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ui/', timeout=3)" \
@@ -80,7 +91,7 @@ until podman exec "${POD}-app" python -c \
   sleep 2
 done
 
-if [ "$NEW_VOLUME" = 1 ]; then
+if [ "$NEW_VOLUME" = 1 ] && [ "$WITH_DUMP" = 1 ]; then
   # A failed dump load aborts Postgres' init, podman restarts it, and it then starts on the
   # half-initialized volume with an empty schema: check the log instead of trusting "up".
   dblog=$(podman logs "${POD}-db" 2>&1 || true)
