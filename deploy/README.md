@@ -29,7 +29,7 @@ Options (environment variables): `ARCHIMAID_PORT` (8000), `ARCHIMAID_BIND` (127.
 
 ## Empty instance (no data)
 
-If `deploy/data/archimaid.sql` is absent, `deploy.sh` deploys an empty instance: the application creates the schema on first start and the migrations seed the reference data (confidentiality, integrity, availability and traceability levels, function categories, usage modes, technology types, tech standard statuses), with no teams, applications or other records. To get one, run `deploy.sh` from a checkout of the source without `deploy/data/` (for example `git clone`, or delete `deploy/data/` from an unpacked archive). The dump is only read when the volume is new.
+If `deploy/data/archimaid.sql` is absent, `deploy.sh` deploys an empty instance: the application creates the schema on first start and the migrations seed the reference data (confidentiality, integrity, availability and traceability levels, function categories, usage modes, technology types, tech standard statuses), with no teams, applications or other records. To get one, build a data-free package with `sh deploy/make-package.sh --no-data` (writes `dist/archimaid-deploy-empty-<date>.tar.gz`, not sensitive), or run `deploy.sh` from a checkout without `deploy/data/`. The dump is only read when the volume is new.
 
 ## Verify the data
 
