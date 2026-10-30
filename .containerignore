@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.claude
+.superpowers
+tests
+docs
+dist
+deploy/data
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.egg-info

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "@POD@"
+spec:
+  containers:
+    - name: db
+      image: docker.io/library/postgres:16-alpine
+      env:
+        - name: POSTGRES_USER
+          value: archimaid
+        - name: POSTGRES_DB
+          value: archimaid
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "@SECRET@"
+              key: password
+      volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        - name: dump
+          mountPath: /docker-entrypoint-initdb.d/archimaid.sql
+          readOnly: true
+    - name: app
+      image: "@IMAGE@"
+      imagePullPolicy: Never
+      env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "@SECRET@"
+              key: password
+      ports:
+        - containerPort: 8000
+          hostPort: @PORT@
+          hostIP: "@BIND@"
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: "@VOLUME@"
+    - name: dump
+      hostPath:
+        path: "@DUMP@"
+        type: File

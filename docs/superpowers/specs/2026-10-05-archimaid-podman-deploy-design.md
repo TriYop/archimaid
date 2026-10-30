@@ -30,7 +30,7 @@ All new; paths relative to the repo root.
 | `Containerfile` | `python:3.13-slim`; installs `uv`, then `uv sync --frozen --no-dev` from `pyproject.toml` and `uv.lock`; copies `src/`; runs as a non-root user (`archimaid`, uid 10001); `ENTRYPOINT ["/app/deploy/entrypoint.sh"]`. |
 | `.containerignore` | Excludes `.git`, `.venv`, `.env`, `tests`, `docs`, `deploy/data`, caches. |
 | `deploy/entrypoint.sh` | POSIX shell: builds `DATABASE_URL=postgresql+psycopg://archimaid:$POSTGRES_PASSWORD@127.0.0.1:5432/archimaid`; waits for the database (retries for up to 120 s, then exits non-zero with a clear message); runs `python -m archimaid.adapters.persistence.migrate`; `exec uvicorn archimaid.main:build_app --factory --host 0.0.0.0 --port 8000`. |
-| `deploy/archimaid-pod.yaml` | The pod. A `Pod` with `postgres` (`POSTGRES_USER=archimaid`, `POSTGRES_DB=archimaid`, `POSTGRES_PASSWORD` from the secret, the named volume on `/var/lib/postgresql/data`, the dump mounted read-only at `/docker-entrypoint-initdb.d/archimaid.sql`, a `pg_isready` readiness probe) and `app` (the built image, `POSTGRES_PASSWORD` from the same secret, `containerPort 8000` published on `hostPort` `@PORT@` and `hostIP` `@BIND@`). The deploy script substitutes the `@...@` placeholders. |
+| `deploy/archimaid-pod.yaml` | The pod. A `Pod` with `postgres` (`POSTGRES_USER=archimaid`, `POSTGRES_DB=archimaid`, `POSTGRES_PASSWORD` from the secret, the named volume on `/var/lib/postgresql/data`, the dump mounted read-only at `/docker-entrypoint-initdb.d/archimaid.sql`) and `app` (the built image with `imagePullPolicy: Never`, since it is built locally; `POSTGRES_PASSWORD` from the same secret, `containerPort 8000` published on `hostPort` `@PORT@` and `hostIP` `@BIND@`). The deploy script substitutes the placeholders `@POD@`, `@SECRET@`, `@IMAGE@`, `@PORT@`, `@BIND@`, `@VOLUME@` and `@DUMP@`. Readiness is checked by `deploy.sh`, not by a probe. |
 | `deploy/deploy.sh` | See "Deploy flow". |
 | `deploy/export-data.sh` | See "Export flow". |
 | `deploy/make-package.sh` | See "Package". |
@@ -41,7 +41,7 @@ All new; paths relative to the repo root.
 
 1. Inputs: `ARCHIMAID_SOURCE_CONTAINER` (default `archimaid-dev-db`), `ARCHIMAID_SOURCE_USER`/`DB` (default `archimaid`).
 2. If the source container exists and is stopped, start it and remember to stop it again afterwards (an exit trap restores its previous state, also on failure). If it does not exist, fail with a clear message. The volume is never modified.
-3. Wait with `pg_isready` (inside the container), then run `pg_dump --no-owner --no-acl --clean --if-exists` through `podman exec`, writing `deploy/data/archimaid.sql`. The file is created with mode 600.
+3. Wait with `pg_isready` (inside the container), then run `pg_dump --no-owner --no-acl --clean --if-exists` through `podman exec`, writing `deploy/data/archimaid.sql`. The directory `deploy/data/` is mode 700 and the dump inside it is mode 644: the unprivileged `postgres` user inside the container must be able to read the file (verified: a 600 file fails with `Permission denied`), so the private directory is what keeps other host users out. `row-counts.txt` stays 600.
 4. Sanity checks on the dump: it contains `alembic_version` and the `data_flow` table, and its size is non-zero; print the row count per application table taken from the source database so the operator can compare them after deployment.
 
 ## Package (`deploy/make-package.sh`)
@@ -54,11 +54,11 @@ Options by environment: `ARCHIMAID_DB_PASSWORD`, `ARCHIMAID_PORT` (8000), `ARCHI
 
 1. Check that `podman` exists and that `deploy/data/archimaid.sql` is present; validate the port and the password pattern.
 2. `podman build -t "$ARCHIMAID_IMAGE" .`
-3. Create the secret `archimaid-db-password` if absent (from the environment or generated); an existing secret is reused and never overwritten.
+3. Create the secret `<pod>-db-password` if absent (from the environment or generated); an existing secret is reused and never overwritten. It holds a Kubernetes `Secret` manifest, because podman's `secretKeyRef` rejects a bare value (verified on podman 5.4.1).
 4. If the volume does not exist, create it: this is the only case where the dump will be loaded. If it exists, print that existing data is kept and the dump is ignored.
 5. With `--fresh`: print what will be deleted (pod, volume), ask the operator to type `fresh`, then remove the pod and the volume and continue as for a new volume.
 6. Render the YAML (substituting `@PORT@`, `@BIND@`, `@DUMP@` as an absolute path, the image and the volume name) to a temporary file and run `podman kube play --replace` on it.
-7. Wait until `GET /ui/` answers with a 2xx or 3xx (up to 180 s, since the first start loads the dump); on timeout print the last lines of both container logs and exit non-zero. On success print the URL and how to read the password (`podman secret inspect --showsecret archimaid-db-password`).
+7. Wait until `GET /ui/` answers (a Python `urlopen` run inside the app container, so the host needs no `curl`; up to 180 s, since the first start loads the dump); on timeout print the last lines of both container logs and exit non-zero. If the volume was new, then check the database log: a failed dump load aborts Postgres' init, podman restarts the container, and it comes up on the half-initialized volume with an empty schema that the app migrates from scratch, so "up" proves nothing. The script therefore fails (printing the init output, advising `--fresh`) when the log contains `psql: error` or lacks `init process complete`. On success print the URL and how to read the password (`podman secret inspect --showsecret archimaid-db-password`).
 
 ## Error handling
 
@@ -82,5 +82,6 @@ Scripts are verified by running them, on this machine, in a separate namespace t
 
 ## Open items (resolved while implementing)
 
-- Whether this podman version honors `hostIP` and `secretKeyRef` in `kube play` exactly as assumed above; if not, the YAML falls back to the equivalent supported fields and the spec is amended.
+- Verified on podman 5.4.1: `hostIP`, `secretKeyRef` (with a `Secret`-manifest secret), a `hostPath` file mount and a named volume all work, and volumes survive `kube play --replace` and `kube down`.
+- On this development machine `kube play --replace` prints `rootless netns: kill network process: permission denied` while removing the old pod, although the pod is recreated correctly. It looks like an artifact of the restricted session this was tested in; the script does not hide or depend on it.
 - Whether `python:3.13-slim` plus `uv sync --frozen` builds cleanly for `psycopg[binary]` on the target architecture (x86_64 assumed, the same as this machine).
